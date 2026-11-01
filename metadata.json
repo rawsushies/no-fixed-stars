@@ -1,0 +1,6 @@
+{
+  "name": "No Fixed Stars",
+  "description": "An atmospheric 2D cosmic horror exploration and astronomical puzzle adventure set at Nadir Observatory.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
