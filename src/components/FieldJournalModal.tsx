@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import {
   INITIAL_DOCUMENTS,
+  TUTORIAL_STEPS,
   type RecordedPlate,
   type CosmicStage,
+  type TutorialStepId,
 } from '../game/astronomyLogic';
 import { soundEngine } from '../game/soundEngine';
 
@@ -12,6 +14,8 @@ export interface FieldJournalModalProps {
   eastPlate: RecordedPlate | null;
   unlockedDocIds: string[];
   chartPuzzleSolved: boolean;
+  activeTutorialStep: TutorialStepId;
+  onReplayPrologue?: () => void;
   onClose: () => void;
 }
 
@@ -21,10 +25,12 @@ export const FieldJournalModal: React.FC<FieldJournalModalProps> = ({
   eastPlate,
   unlockedDocIds,
   chartPuzzleSolved,
+  activeTutorialStep,
+  onReplayPrologue,
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'objectives' | 'plates' | 'documents' | 'archive'
+    'objectives' | 'tutorials' | 'plates' | 'documents' | 'archive'
   >('objectives');
   const [img1Error, setImg1Error] = useState(false);
   const [img2Error, setImg2Error] = useState(false);
@@ -33,6 +39,8 @@ export const FieldJournalModal: React.FC<FieldJournalModalProps> = ({
     ...doc,
     unlocked: unlockedDocIds.includes(doc.id),
   }));
+
+  const tutorialList = Object.values(TUTORIAL_STEPS);
 
   return (
     <div
@@ -51,16 +59,32 @@ export const FieldJournalModal: React.FC<FieldJournalModalProps> = ({
               RELIEF ASTRONOMER DR. E. VANCE · SECTOR IV SURVEY · COSMIC STAGE 0{cosmicStage}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              soundEngine.playVernierTick('light');
-              onClose();
-            }}
-            className="px-3.5 py-1.5 text-xs font-mono-tabular bg-[#262018] hover:bg-[#362d22] text-[#f3e5ab] border border-[#8c6f44]/50 rounded whitespace-nowrap shrink-0 cursor-pointer"
-          >
-            Close Journal [J]
-          </button>
+          <div className="flex items-center gap-2">
+            {onReplayPrologue && (
+              <button
+                type="button"
+                onClick={() => {
+                  soundEngine.playVernierTick('light');
+                  onClose();
+                  onReplayPrologue();
+                }}
+                className="px-3 py-1.5 text-xs font-mono-tabular bg-[#1d1812] hover:bg-[#2a2219] text-[#d4a359] border border-[#8c6f44]/40 rounded whitespace-nowrap shrink-0 cursor-pointer"
+              >
+                Replay Prologue
+              </button>
+            )}
+            <button
+              type="button"
+              data-testid="close-journal-btn"
+              onClick={() => {
+                soundEngine.playVernierTick('light');
+                onClose();
+              }}
+              className="px-3.5 py-1.5 text-xs font-mono-tabular bg-[#262018] hover:bg-[#362d22] text-[#f3e5ab] border border-[#8c6f44]/50 rounded whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              Close Journal [J]
+            </button>
+          </div>
         </div>
 
         {/* Notebook Tab Bar */}
@@ -68,9 +92,10 @@ export const FieldJournalModal: React.FC<FieldJournalModalProps> = ({
           {(
             [
               { id: 'objectives', label: '01. Survey Objectives' },
-              { id: 'plates', label: '02. Recorded Glass Plates' },
-              { id: 'documents', label: '03. Director Vane’s Notes' },
-              { id: 'archive', label: '04. Archival Plates (1894–1924)' },
+              { id: 'tutorials', label: '02. Field Manual (Tutorials 01–10)' },
+              { id: 'plates', label: '03. Recorded Glass Plates' },
+              { id: 'documents', label: '04. Director Vane’s Notes' },
+              { id: 'archive', label: '05. Archival Plates (1894–1924)' },
             ] as const
           ).map((tab) => (
             <button
@@ -99,7 +124,7 @@ export const FieldJournalModal: React.FC<FieldJournalModalProps> = ({
                 Current Investigation Protocol — First Night at Nadir Plateau
               </h3>
               <p className="text-sm text-[#d4c7b0] leading-relaxed">
-                Director Julian Vane vanished after attempting a dual-baseline parallax measurement of an uncatalogued star in Cygnus-Lacerta (<strong className="text-[#f3e5ab]">Object Nadir-IX / The Wanderer</strong>). Complete his unfinished observation sequence to determine why he ordered the dome sealed.
+                Director Julian Vane vanished after attempting a dual-baseline parallax measurement of an uncatalogued star in Cygnus-Lacerta (<strong className="text-[#f3e5ab]">Object Nadir-IX / The Wanderer</strong>). Walk Dr. Vance across the observatory terrace and complete his unfinished observation sequence.
               </p>
 
               <div className="space-y-2.5 pt-2">
@@ -109,7 +134,7 @@ export const FieldJournalModal: React.FC<FieldJournalModalProps> = ({
                       Step 1: Expose West Pier Photographic Plate (−250.0 m)
                     </div>
                     <p className="text-xs text-[#b8a78a] mt-1">
-                      Open the West Pier Equatorial Telescope on the Observation Deck. Select <em>The Wanderer (Object Nadir-IX)</em>, adjust the focus vernier to 74.0 mm, and record the West Plate.
+                      Walk Dr. Vance to the West Pier Equatorial Telescope on the Observation Deck and press <strong>E</strong>. Select <em>The Wanderer (Object Nadir-IX)</em>, rack the focus vernier to 74.0 mm (≥85% sharpness), and expose Glass Plate W-09.
                     </p>
                   </div>
                   <span className="text-xs font-mono-tabular shrink-0 text-[#d4a359]">
@@ -123,7 +148,7 @@ export const FieldJournalModal: React.FC<FieldJournalModalProps> = ({
                       Step 2: Traverse to East Cliffside Pier &amp; Expose East Plate (+250.0 m)
                     </div>
                     <p className="text-xs text-[#b8a78a] mt-1">
-                      Follow the East Ridge Walkway to the East Pier Station (+250m East). Open the East Transit Instrument, locate <em>The Wanderer</em>, and record the East Plate.
+                      Walk to the right end of the terrace (East Ridge Walkway) and press <strong>E</strong> to reach the East Pier Station (+250 m). Open the East Transit Instrument, focus on <em>The Wanderer</em> at 74.0 mm, and expose Glass Plate E-09.
                     </p>
                   </div>
                   <span className="text-xs font-mono-tabular shrink-0 text-[#d4a359]">
@@ -134,10 +159,10 @@ export const FieldJournalModal: React.FC<FieldJournalModalProps> = ({
                 <div className="p-3.5 rounded bg-[#120f0c] border border-[#8c6f44]/30 flex items-start justify-between gap-4">
                   <div>
                     <div className="text-sm font-semibold text-[#f3e5ab]">
-                      Step 3: Compare Plates &amp; Plot Sightlines in the Chart Room
+                      Step 3: Superimpose Both Plates &amp; Plot Sightlines in the Chart Room
                     </div>
                     <p className="text-xs text-[#b8a78a] mt-1">
-                      Enter the Chart Room, superimpose both glass plates on the Blink Comparator, select <em>The Wanderer</em>, and calculate its parallax intersection.
+                      Walk to the Chart Room Door, press <strong>E</strong>, superimpose both glass plates on the Blink Comparator, select <em>The Wanderer</em>, and calculate its parallax intersection.
                     </p>
                   </div>
                   <span className="text-xs font-mono-tabular shrink-0 text-[#d4a359]">
@@ -148,13 +173,45 @@ export const FieldJournalModal: React.FC<FieldJournalModalProps> = ({
             </div>
           )}
 
+          {activeTab === 'tutorials' && (
+            <div className="space-y-3">
+              <h3 className="text-lg font-display font-semibold text-[#f3e5ab]">
+                Astrometric Field Manual — Progressive Tutorial Ledger (01–10)
+              </h3>
+              <div className="grid grid-cols-1 gap-2.5">
+                {tutorialList.map((step) => {
+                  const isCurrent = activeTutorialStep === step.id;
+                  return (
+                    <div
+                      key={step.id}
+                      className={`p-3 rounded border flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
+                        isCurrent
+                          ? 'bg-[#211a11] border-[#d4a359]'
+                          : 'bg-[#120f0c] border-[#8c6f44]/25'
+                      }`}
+                    >
+                      <div>
+                        <div className="text-xs font-mono-tabular text-[#d4a359]">
+                          {step.numberLabel} · {step.title}
+                        </div>
+                        <p className="text-xs text-[#d4c7b0] mt-0.5">{step.instruction}</p>
+                      </div>
+                      <span className="text-[11px] font-mono-tabular px-2 py-1 rounded bg-[#1a150f] text-[#f3e5ab] shrink-0">
+                        {step.controlHint}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'plates' && (
             <div className="space-y-4">
               <h3 className="text-lg font-display font-semibold text-[#f3e5ab]">
                 Astrometric Plate Ledger (500.0 m Granite Baseline)
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* West Plate Card */}
                 <div className="p-4 rounded bg-[#120f0c] border border-[#8c6f44]/35 space-y-2">
                   <div className="text-xs font-mono-tabular uppercase tracking-wider text-[#b8a78a]">
                     PLATE W-09 · WEST PIER STATION (−250.0 m)
@@ -176,7 +233,6 @@ export const FieldJournalModal: React.FC<FieldJournalModalProps> = ({
                   )}
                 </div>
 
-                {/* East Plate Card */}
                 <div className="p-4 rounded bg-[#120f0c] border border-[#8c6f44]/35 space-y-2">
                   <div className="text-xs font-mono-tabular uppercase tracking-wider text-[#b8a78a]">
                     PLATE E-09 · EAST PIER STATION (+250.0 m)
@@ -224,7 +280,7 @@ export const FieldJournalModal: React.FC<FieldJournalModalProps> = ({
                     </div>
                   ) : (
                     <p className="text-xs text-[#8c7e68]">
-                      Inspect instruments and stations around Nadir Observatory to recover this document.
+                      Walk Dr. Vance to instruments and stations around Nadir Observatory and press [E] to recover this document.
                     </p>
                   )}
                 </article>

@@ -6,19 +6,27 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   SAVE_STORAGE_KEY,
+  TUTORIAL_STEPS,
+  WORLD_HOTSPOTS,
   createInitialGameState,
   serializeGameState,
   deserializeGameState,
   deriveCosmicStage,
+  deriveActiveTutorialStep,
+  getCurrentInvestigationObjective,
+  findNearbyHotspot,
   type GameSaveState,
   type RecordedPlate,
   type StationId,
+  type WorldHotspot,
+  type CinematicId,
 } from './game/astronomyLogic';
 import { soundEngine } from './game/soundEngine';
 import { LivingSkyCanvas } from './components/LivingSkyCanvas';
 import { TelescopeModal } from './components/TelescopeModal';
 import { ChartRoomView } from './components/ChartRoomView';
 import { FieldJournalModal } from './components/FieldJournalModal';
+import { CinematicDirectorModal } from './components/CinematicDirectorModal';
 
 const STAGE_NAMES: Record<1 | 2 | 3 | 4, string> = {
   1: 'STAGE I · FAMILIARITY',
@@ -42,6 +50,7 @@ export default function App() {
   const [isJournalOpen, setIsJournalOpen] = useState(false);
   const [isTelescopeOpen, setIsTelescopeOpen] = useState(false);
   const [isMilestoneModalOpen, setIsMilestoneModalOpen] = useState(false);
+  const [activeCinematic, setActiveCinematic] = useState<CinematicId | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [cameraOffset, setCameraOffset] = useState<{ x: number; y: number }>({
     x: 0,
@@ -52,6 +61,16 @@ export default function App() {
     title: string;
     body: string;
   } | null>(null);
+
+  const [opticalTelemetry, setOpticalTelemetry] = useState<{
+    selectedStarId: string;
+    isCentered: boolean;
+    isSharp: boolean;
+  }>({
+    selectedStarId: 'GAMMA_CYGNI',
+    isCentered: true,
+    isSharp: true,
+  });
 
   // Persist game state to localStorage
   useEffect(() => {
@@ -83,20 +102,31 @@ export default function App() {
     soundEngine.setCosmicStage(gameState.cosmicStage);
   }, [gameState.cosmicStage]);
 
-  const handleStartGame = useCallback(() => {
-    soundEngine.initOnInteraction();
-    soundEngine.playVernierTick('medium');
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-    setIsPaused(false);
-    setIsMilestoneModalOpen(false);
-    setCameraOffset({ x: 0, y: 0 });
-    setGameState((prev) => ({
-      ...prev,
-      scene: prev.scene === 'TITLE' ? 'EXTERIOR_DECK' : prev.scene,
-    }));
-  }, []);
+  const handleBeginObservation = useCallback(
+    (skipPrologue = false) => {
+      soundEngine.initOnInteraction();
+      soundEngine.playVernierTick('medium');
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+      setIsPaused(false);
+      setIsMilestoneModalOpen(false);
+      setCameraOffset({ x: 0, y: 0 });
+
+      setGameState((prev) => {
+        const shouldPlayPrologue = !skipPrologue && !prev.prologueCompleted;
+        if (shouldPlayPrologue) {
+          setActiveCinematic('PROLOGUE_1926');
+        }
+        return {
+          ...prev,
+          scene: prev.scene === 'TITLE' ? 'EXTERIOR_DECK' : prev.scene,
+          prologueCompleted: true,
+        };
+      });
+    },
+    []
+  );
 
   const handleResetSurvey = useCallback(() => {
     soundEngine.initOnInteraction();
@@ -110,6 +140,7 @@ export default function App() {
     setIsJournalOpen(false);
     setIsTelescopeOpen(false);
     setIsMilestoneModalOpen(false);
+    setActiveCinematic(null);
     setInspectionToast(null);
     setCameraOffset({ x: 0, y: 0 });
   }, []);
@@ -130,13 +161,145 @@ export default function App() {
     });
   }, [gameState.scene]);
 
-  // Global keyboard shortcuts (Enter/Space on Title, Esc/P Pause, J Journal, M Mute, R Restart)
+  const handleOpenJournal = useCallback(() => {
+    soundEngine.initOnInteraction();
+    soundEngine.playVernierTick('light');
+    setIsJournalOpen((prev) => !prev);
+    setGameState((prev) =>
+      prev.journalOpenedOnce ? prev : { ...prev, journalOpenedOnce: true }
+    );
+  }, []);
+
+  const handlePlayerMove = useCallback(
+    (nextX: number, facing: 'left' | 'right') => {
+      setGameState((prev) => {
+        const movedSignificantly =
+          prev.hasMovedPlayer || Math.abs(nextX - 0.42) > 0.03;
+        if (
+          Math.abs(prev.playerX - nextX) < 0.002 &&
+          prev.playerFacing === facing &&
+          prev.hasMovedPlayer === movedSignificantly
+        ) {
+          return prev;
+        }
+        return {
+          ...prev,
+          playerX: nextX,
+          playerFacing: facing,
+          hasMovedPlayer: movedSignificantly,
+        };
+      });
+    },
+    []
+  );
+
+  const handleHotspotInteract = useCallback((hotspot: WorldHotspot) => {
+    soundEngine.initOnInteraction();
+    soundEngine.playVernierTick('medium');
+    setInspectionToast(null);
+
+    switch (hotspot.id) {
+      case 'WEST_TELESCOPE':
+        setGameState((prev) => ({
+          ...prev,
+          activeStation: 'west',
+          scene: 'EXTERIOR_DECK',
+          playerX: hotspot.x,
+          hasMovedPlayer: true,
+        }));
+        setIsTelescopeOpen(true);
+        break;
+
+      case 'EAST_TELESCOPE':
+        setGameState((prev) => ({
+          ...prev,
+          activeStation: 'east',
+          scene: 'EAST_STATION',
+          playerX: hotspot.x,
+          hasMovedPlayer: true,
+        }));
+        setIsTelescopeOpen(true);
+        break;
+
+      case 'CHART_ROOM_DOOR':
+      case 'EAST_CHART_SHORTCUT':
+        setGameState((prev) => ({
+          ...prev,
+          scene: 'CHART_ROOM',
+          playerX: hotspot.x,
+          hasMovedPlayer: true,
+        }));
+        break;
+
+      case 'PLUMB_LINE_PILLAR':
+        setGameState((prev) => ({
+          ...prev,
+          playerX: hotspot.x,
+          hasMovedPlayer: true,
+          plumbLineInspected: true,
+          unlockedDocIds: prev.unlockedDocIds.includes('DOC_PLUMB_LINE')
+            ? prev.unlockedDocIds
+            : [...prev.unlockedDocIds, 'DOC_PLUMB_LINE'],
+        }));
+        setInspectionToast({
+          title: 'Meridian Plumb-Line Pillar (Journal Entry Recovered)',
+          body: 'Inside the glass wind-shield, the suspended lead plumb-bob does not hang vertical. It leans 0.4° upward toward Cygnus—deflected toward the azimuth of Object Nadir-IX.',
+        });
+        break;
+
+      case 'EAST_RIDGE_PATH':
+        setCameraOffset({ x: 0, y: 0 });
+        setGameState((prev) => ({
+          ...prev,
+          scene: 'EAST_STATION',
+          activeStation: 'east',
+          playerX: 0.24,
+          playerFacing: 'right',
+          hasMovedPlayer: true,
+        }));
+        break;
+
+      case 'WEST_RETURN_PATH':
+        setCameraOffset({ x: 0, y: 0 });
+        setGameState((prev) => ({
+          ...prev,
+          scene: 'EXTERIOR_DECK',
+          activeStation: 'west',
+          playerX: 0.76,
+          playerFacing: 'left',
+          hasMovedPlayer: true,
+        }));
+        break;
+
+      case 'BASELINE_THEODOLITE':
+        setGameState((prev) => ({
+          ...prev,
+          playerX: hotspot.x,
+          hasMovedPlayer: true,
+          eastBeaconAligned: true,
+          unlockedDocIds: prev.unlockedDocIds.includes('DOC_EAST_PIER_LOG')
+            ? prev.unlockedDocIds
+            : [...prev.unlockedDocIds, 'DOC_EAST_PIER_LOG'],
+        }));
+        setInspectionToast({
+          title: 'Baseline Theodolite (+250.0 m East · Log Recovered)',
+          body: 'Sighting back toward the warm amber lantern on the West Dome confirms the granite baseline is 500.00 meters true. Torn pages from Director Vane’s logbook are wedged beneath the brass vernier.',
+        });
+        break;
+    }
+  }, []);
+
+  const nearbyHotspot = findNearbyHotspot(gameState.scene, gameState.playerX);
+
+  // Global keyboard shortcuts (Enter/Space on Title, E to Interact, Esc/P Pause, J Journal, M Mute, R Restart)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (activeCinematic) return;
+
       if (gameState.scene === 'TITLE') {
         if (e.code === 'Enter' || e.code === 'Space') {
           e.preventDefault();
-          handleStartGame();
+          handleBeginObservation(false);
         }
         return;
       }
@@ -150,10 +313,18 @@ export default function App() {
         } else {
           handleTogglePause();
         }
+      } else if (
+        (e.code === 'KeyE' || e.code === 'Enter') &&
+        !isPaused &&
+        !isTelescopeOpen &&
+        !isJournalOpen &&
+        nearbyHotspot
+      ) {
+        e.preventDefault();
+        handleHotspotInteract(nearbyHotspot);
       } else if (e.code === 'KeyJ' && !isPaused) {
         e.preventDefault();
-        soundEngine.playVernierTick('light');
-        setIsJournalOpen((prev) => !prev);
+        handleOpenJournal();
       } else if (e.code === 'KeyM') {
         e.preventDefault();
         handleToggleMute();
@@ -166,11 +337,15 @@ export default function App() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
+    activeCinematic,
     gameState.scene,
     isTelescopeOpen,
     isJournalOpen,
     isPaused,
-    handleStartGame,
+    nearbyHotspot,
+    handleBeginObservation,
+    handleHotspotInteract,
+    handleOpenJournal,
     handleTogglePause,
     handleToggleMute,
     handleResetSurvey,
@@ -237,63 +412,45 @@ export default function App() {
       };
     });
     setTraumaCounter((c) => c + 1);
+    setActiveCinematic('REVELATION_STAGE_4');
   }, []);
-
-  const handleOpenTelescopeFromStation = (station: StationId) => {
-    soundEngine.initOnInteraction();
-    soundEngine.playVernierTick('medium');
-    setGameState((prev) => ({
-      ...prev,
-      activeStation: station,
-      scene: station === 'west' ? 'EXTERIOR_DECK' : 'EAST_STATION',
-    }));
-    setIsTelescopeOpen(true);
-  };
-
-  const handleInspectPlumbLine = () => {
-    soundEngine.initOnInteraction();
-    soundEngine.playVernierTick('medium');
-    setGameState((prev) => ({
-      ...prev,
-      plumbLineInspected: true,
-      unlockedDocIds: prev.unlockedDocIds.includes('DOC_PLUMB_LINE')
-        ? prev.unlockedDocIds
-        : [...prev.unlockedDocIds, 'DOC_PLUMB_LINE'],
-    }));
-    setInspectionToast({
-      title: 'Meridian Plumb-Line Pillar (Journal Entry Recovered)',
-      body: 'Inside the glass wind-shield, the suspended lead plumb-bob does not hang vertical. It leans 0.4° upward toward Cygnus—deflected toward the azimuth of Object Nadir-IX.',
-    });
-  };
-
-  const handleInspectEastTheodolite = () => {
-    soundEngine.initOnInteraction();
-    soundEngine.playVernierTick('medium');
-    setGameState((prev) => ({
-      ...prev,
-      eastBeaconAligned: true,
-      unlockedDocIds: prev.unlockedDocIds.includes('DOC_EAST_PIER_LOG')
-        ? prev.unlockedDocIds
-        : [...prev.unlockedDocIds, 'DOC_EAST_PIER_LOG'],
-    }));
-    setInspectionToast({
-      title: 'Baseline Theodolite (+250.0 m East · Log Recovered)',
-      body: 'Sighting back toward the warm amber lantern on the West Dome confirms the granite baseline is 500.00 meters true. Torn pages from Director Vane’s logbook are wedged beneath the brass vernier.',
-    });
-  };
 
   const platesRecordedCount =
     (gameState.recordedPlates.west?.isAnomaly ? 1 : 0) +
     (gameState.recordedPlates.east?.isAnomaly ? 1 : 0);
 
+  const activeTutorialStep = deriveActiveTutorialStep(gameState, {
+    isTelescopeOpen,
+    selectedStarId: opticalTelemetry.selectedStarId,
+    isCentered: opticalTelemetry.isCentered,
+    isSharp: opticalTelemetry.isSharp,
+  });
+
+  const currentTutorialInfo =
+    activeTutorialStep !== 'COMPLETED'
+      ? TUTORIAL_STEPS[activeTutorialStep]
+      : null;
+
+  const currentObjective = getCurrentInvestigationObjective(gameState);
+
+  const hasSavedProgress =
+    platesRecordedCount > 0 ||
+    gameState.plumbLineInspected ||
+    gameState.eastBeaconAligned ||
+    gameState.chartPuzzleSolved;
+
   return (
     <main className="relative w-screen h-screen overflow-hidden select-none bg-[#050811]">
-      {/* Isolated 60fps 10-Layer Living Sky Canvas */}
+      {/* 12-Layer Painted Environment & Playable Dr. E. Vance Canvas */}
       <LivingSkyCanvas
         scene={gameState.scene}
         station={gameState.activeStation}
         cosmicStage={gameState.cosmicStage}
-        isPaused={isPaused}
+        isPaused={isPaused || activeCinematic !== null}
+        playerX={gameState.playerX}
+        playerFacing={gameState.playerFacing}
+        onPlayerMove={handlePlayerMove}
+        onHotspotInteract={handleHotspotInteract}
         cameraTargetOffset={cameraOffset}
         onCameraMove={setCameraOffset}
         traumaTrigger={traumaCounter}
@@ -307,7 +464,6 @@ export default function App() {
           aria-label="Title Screen"
           className="fixed inset-0 z-20 flex flex-col items-center justify-between px-6 py-8 pointer-events-none"
         >
-          {/* Top Subtle Location Line + Bespoke Inline SVG Title Lockup in Upper Negative Space */}
           <div className="flex flex-col items-center text-center max-w-2xl mt-2 pointer-events-auto">
             <div className="text-xs font-mono-tabular tracking-[0.25em] text-[#94a3b8] uppercase mb-3">
               NADIR OBSERVATORY · ELEV. 4,120 M · SECTOR IV SURVEY
@@ -319,7 +475,6 @@ export default function App() {
               role="img"
               aria-label="No Fixed Stars — A star should not move when you move"
             >
-              {/* Delicate Astrometric Degree Arcs & Sightlines */}
               <g stroke="rgba(212, 163, 89, 0.32)" strokeWidth="1" fill="none">
                 <path d="M 140 48 Q 340 6 540 48" strokeDasharray="3 5" />
                 <path d="M 190 152 Q 340 178 490 152" strokeDasharray="2 4" />
@@ -330,7 +485,6 @@ export default function App() {
                 <line x1="340" y1="10" x2="340" y2="42" />
               </g>
 
-              {/* Main Title Lettering */}
               <text
                 x="340"
                 y="102"
@@ -344,7 +498,6 @@ export default function App() {
                 NO FIXED STARS
               </text>
 
-              {/* Tagline */}
               <text
                 x="340"
                 y="140"
@@ -359,34 +512,45 @@ export default function App() {
               </text>
             </svg>
 
-            <div className="flex flex-wrap items-center justify-center gap-4">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <button
                 type="button"
                 data-start="true"
-                onClick={handleStartGame}
-                className="px-8 py-2.5 text-sm font-mono-tabular uppercase tracking-widest bg-[#d4a359] hover:bg-[#e3b56b] text-[#050811] font-medium rounded shadow-[0_0_30px_rgba(212,163,89,0.28)] transition-transform active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+                data-testid="begin-observation-btn"
+                onClick={() => handleBeginObservation(false)}
+                className="px-7 py-2.5 text-sm font-mono-tabular uppercase tracking-widest bg-[#d4a359] hover:bg-[#e3b56b] text-[#050811] font-medium rounded shadow-[0_0_30px_rgba(212,163,89,0.28)] transition-transform active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
               >
                 Begin Observation
               </button>
+
+              {hasSavedProgress && (
+                <button
+                  type="button"
+                  data-testid="continue-survey-btn"
+                  onClick={() => handleBeginObservation(true)}
+                  className="px-5 py-2.5 text-xs font-mono-tabular uppercase tracking-widest bg-[#10192d]/90 hover:bg-[#192745] text-[#f3e5ab] border border-[#d4a359]/45 rounded cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  Continue Survey
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Single Flat Control-Hint Line in Bottom Safe Margin */}
           <div className="text-xs font-mono-tabular text-[#94a3b8] tracking-wider text-center">
-            WASD / Drag Pan Sky · Click Instruments to Inspect · J Field Journal · Esc Pause
+            A / D or Arrows Walk · Press [E] or Click Instruments to Interact · J Field Journal · Esc Pause
           </div>
         </section>
       )}
 
       {/* ========================================================= */}
-      {/* PLAYING HUD & WORLD HOTSPOTS (EXTERIOR & EAST STATION)    */}
+      {/* PLAYING HUD & CONTEXTUAL TUTORIAL (LOW-OCCLUSION)         */}
       {/* ========================================================= */}
       {gameState.scene !== 'TITLE' && (
         <div className="fixed inset-0 z-20 pointer-events-none flex flex-col justify-between p-4 sm:p-6">
-          {/* Top Perimeter Clusters (Low-Occlusion World-Matched Framing) */}
+          {/* Top Perimeter Clusters */}
           <div className="flex flex-wrap items-start justify-between gap-2 sm:gap-4">
-            {/* Top-Left Telemetry & Stage Cluster */}
-            <div className="pointer-events-auto bg-[#070c18]/85 border border-[#d4a359]/30 rounded px-3 py-2 sm:px-3.5 sm:py-2.5 shadow-lg space-y-1">
+            {/* Top-Left Telemetry, Stage & Persistent Current Investigation */}
+            <div className="pointer-events-auto bg-[#070c18]/88 border border-[#d4a359]/30 rounded px-3.5 py-2.5 shadow-lg space-y-1 max-w-md">
               <div className="flex items-center gap-2 sm:gap-3">
                 <span className="text-[11px] font-mono-tabular uppercase tracking-wider text-[#d4a359] whitespace-nowrap">
                   {STAGE_NAMES[gameState.cosmicStage]}
@@ -403,10 +567,10 @@ export default function App() {
                 </span>
               </div>
 
-              <div className="flex items-center gap-3 sm:gap-4 text-xs font-mono-tabular">
+              <div className="flex items-center gap-3 text-xs font-mono-tabular">
                 <div className="whitespace-nowrap">
                   <span className="text-[#94a3b8] mr-1">PLATES:</span>
-                  <span className="text-sm sm:text-base font-semibold text-[#f3e5ab]">
+                  <span className="text-sm font-semibold text-[#f3e5ab]">
                     {platesRecordedCount}/2
                   </span>
                 </div>
@@ -415,23 +579,46 @@ export default function App() {
                 </span>
                 <div className="whitespace-nowrap">
                   <span className="text-[#94a3b8] mr-1">SURVEY:</span>
-                  <span className="text-sm sm:text-base font-semibold text-[#f3e5ab]">
-                    {gameState.chartPuzzleSolved ? 'SOLVED' : 'PENDING'}
+                  <span className="text-sm font-semibold text-[#f3e5ab]">
+                    {gameState.chartPuzzleSolved ? 'SOLVED' : 'IN PROGRESS'}
                   </span>
                 </div>
+              </div>
+
+              <div
+                data-testid="current-investigation-banner"
+                className="pt-1 border-t border-slate-800/90 text-[11px] text-[#cbd5e1] leading-snug"
+              >
+                <span className="font-mono-tabular uppercase text-[#d4a359] mr-1.5">
+                  CURRENT INVESTIGATION:
+                </span>
+                <span className="font-serif text-[#f3e5ab]">
+                  {currentObjective.headline}
+                </span>
               </div>
             </div>
 
             {/* Top-Right Compact Utility Controls */}
             <div className="pointer-events-auto flex items-center gap-2">
+              {gameState.tutorialDismissed && currentTutorialInfo && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setGameState((prev) => ({ ...prev, tutorialDismissed: false }))
+                  }
+                  className="px-2.5 py-2 text-xs font-mono-tabular bg-[#070c18]/85 hover:bg-[#111b30] text-[#d4a359] border border-[#d4a359]/35 rounded cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  Show Hint
+                </button>
+              )}
+
               <button
                 type="button"
                 tabIndex={-1}
+                data-testid="open-journal-btn"
                 onClick={(e) => {
                   e.currentTarget.blur();
-                  soundEngine.initOnInteraction();
-                  soundEngine.playVernierTick('light');
-                  setIsJournalOpen(true);
+                  handleOpenJournal();
                 }}
                 aria-label="Open Field Journal"
                 className="px-3 py-2 text-xs font-mono-tabular bg-[#070c18]/85 hover:bg-[#111b30] text-[#f3e5ab] border border-[#d4a359]/35 rounded flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
@@ -488,174 +675,134 @@ export default function App() {
             </div>
           </div>
 
-          {/* Lower Sky Notice when in Stage 4 Revelation (positioned above bottom dock so center sky is unobstructed) */}
-          {gameState.cosmicStage === 4 &&
-            (gameState.scene === 'EXTERIOR_DECK' || gameState.scene === 'EAST_STATION') && (
-              <div className="mt-auto mb-3 mx-auto max-w-2xl pointer-events-auto bg-[#090614]/92 border border-[#b388eb]/55 rounded-lg px-5 py-3 text-center flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl">
-                <div className="text-left space-y-0.5">
-                  <div className="text-[11px] font-mono-tabular uppercase tracking-widest text-[#b388eb]">
-                    CELESTIAL ANOMALY CONFIRMED · STAGE IV REVELATION
+          {/* Bottom Area: Contextual Tutorial Prompt, Proximity Action Bar & Stage IV Notice */}
+          <div className="mt-auto flex flex-col items-center gap-2.5">
+            {/* Stage 4 Revelation Notice */}
+            {gameState.cosmicStage === 4 &&
+              (gameState.scene === 'EXTERIOR_DECK' || gameState.scene === 'EAST_STATION') && (
+                <div className="mx-auto max-w-2xl pointer-events-auto bg-[#090614]/92 border border-[#b388eb]/55 rounded-lg px-5 py-3 text-center flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl">
+                  <div className="text-left space-y-0.5">
+                    <div className="text-[11px] font-mono-tabular uppercase tracking-widest text-[#b388eb]">
+                      CELESTIAL ANOMALY CONFIRMED · STAGE IV REVELATION
+                    </div>
+                    <p className="text-xs sm:text-sm font-serif text-[#f3e5ab] leading-relaxed">
+                      Walk Dr. Vance across the terrace with <span className="font-mono-tabular">A / D</span> or pan the sky. While every mountain and constellation shifts, <strong className="underline decoration-[#b388eb]">Object Nadir-IX remains locked to your gaze</strong>.
+                    </p>
                   </div>
-                  <p className="text-xs sm:text-sm font-serif text-[#f3e5ab] leading-relaxed">
-                    Pan the sky with mouse or <span className="font-mono-tabular">WASD</span>. While every mountain and constellation shifts, <strong className="underline decoration-[#b388eb]">Object Nadir-IX remains locked to your gaze</strong>.
+                  <button
+                    type="button"
+                    data-testid="complete-first-night-btn"
+                    onClick={() => {
+                      soundEngine.playVernierTick('medium');
+                      setGameState((prev) => ({ ...prev, anomalyWitnessed: true }));
+                      setIsMilestoneModalOpen(true);
+                    }}
+                    className="px-4 py-2 text-xs font-mono-tabular uppercase tracking-wider bg-[#d4a359] hover:bg-[#e5b86b] text-[#050811] font-medium rounded cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    Complete Survey Log →
+                  </button>
+                </div>
+              )}
+
+            {/* Contextual Inspection Toast */}
+            {inspectionToast && (
+              <div
+                role="status"
+                className="mx-auto max-w-lg pointer-events-auto bg-[#080e1c]/95 border border-[#d4a359]/45 rounded px-4 py-3 shadow-xl flex items-start justify-between gap-4"
+              >
+                <div className="space-y-1">
+                  <div className="text-xs font-display font-semibold text-[#f3e5ab]">
+                    {inspectionToast.title}
+                  </div>
+                  <p className="text-xs text-[#cbd5e1] leading-relaxed">
+                    {inspectionToast.body}
                   </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    soundEngine.playVernierTick('medium');
-                    setGameState((prev) => ({ ...prev, anomalyWitnessed: true }));
-                    setIsMilestoneModalOpen(true);
-                  }}
-                  className="px-4 py-2 text-xs font-mono-tabular uppercase tracking-wider bg-[#d4a359] hover:bg-[#e5b86b] text-[#050811] font-medium rounded cursor-pointer whitespace-nowrap shrink-0"
+                  onClick={() => setInspectionToast(null)}
+                  className="text-xs font-mono-tabular text-[#94a3b8] hover:text-white shrink-0 cursor-pointer"
                 >
-                  Complete First Night Log →
+                  Dismiss
                 </button>
               </div>
             )}
 
-          {/* Contextual Inspection Toast */}
-          {inspectionToast && (
-            <div
-              role="status"
-              className="mx-auto max-w-lg pointer-events-auto bg-[#080e1c]/95 border border-[#d4a359]/45 rounded px-4 py-3 shadow-xl flex items-start justify-between gap-4"
-            >
-              <div className="space-y-1">
-                <div className="text-xs font-display font-semibold text-[#f3e5ab]">
-                  {inspectionToast.title}
+            {/* Diegetic Proximity Interaction Prompt + Progressive Tutorial Strip */}
+            {!isTelescopeOpen && !isJournalOpen && (
+              <div className="w-full max-w-4xl flex flex-col items-center gap-2">
+                <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                  {currentTutorialInfo && !gameState.tutorialDismissed && (
+                    <div
+                      data-testid="active-tutorial-banner"
+                      className="flex-1 pointer-events-auto bg-[#070c18]/92 border border-[#d4a359]/40 rounded-lg px-4 py-2.5 shadow-xl flex items-start justify-between gap-3"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-mono-tabular uppercase tracking-wider text-[#d4a359] font-semibold">
+                            {currentTutorialInfo.numberLabel} · {currentTutorialInfo.title}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#d8dee9] leading-relaxed">
+                          {currentTutorialInfo.instruction}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label="Dismiss Tutorial Hint"
+                        onClick={() =>
+                          setGameState((prev) => ({ ...prev, tutorialDismissed: true }))
+                        }
+                        className="text-[11px] font-mono-tabular text-[#94a3b8] hover:text-white shrink-0 cursor-pointer"
+                      >
+                        Hide
+                      </button>
+                    </div>
+                  )}
+
+                  {(gameState.scene === 'EXTERIOR_DECK' ||
+                    gameState.scene === 'EAST_STATION') &&
+                    nearbyHotspot && (
+                      <button
+                        type="button"
+                        data-testid={`interact-hotspot-${nearbyHotspot.id}`}
+                        onClick={() => handleHotspotInteract(nearbyHotspot)}
+                        className="pointer-events-auto px-4 py-2.5 bg-[#d4a359] hover:bg-[#e5b86b] text-[#050811] font-mono-tabular text-xs font-semibold uppercase tracking-wider rounded-lg shadow-xl transition-transform active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+                      >
+                        [E] {nearbyHotspot.actionLabel}
+                      </button>
+                    )}
                 </div>
-                <p className="text-xs text-[#cbd5e1] leading-relaxed">
-                  {inspectionToast.body}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setInspectionToast(null)}
-                className="text-xs font-mono-tabular text-[#94a3b8] hover:text-white shrink-0 cursor-pointer"
-              >
-                Dismiss
-              </button>
-            </div>
-          )}
 
-          {/* Bottom Interactive Observatory Station Hotspots Dock (Occupies Lower Foreground) */}
-          {(gameState.scene === 'EXTERIOR_DECK' || gameState.scene === 'EAST_STATION') && (
-            <div className="flex flex-col items-center gap-2">
-              <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2.5 bg-[#060b16]/90 border border-slate-800/90 rounded-lg px-4 py-2.5 shadow-2xl">
-                {gameState.scene === 'EXTERIOR_DECK' ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenTelescopeFromStation('west')}
-                      className="px-3.5 py-2 text-xs font-mono-tabular bg-[#111c33] hover:bg-[#19294a] text-[#f3e5ab] border border-[#d4a359]/50 rounded transition-colors cursor-pointer whitespace-nowrap shrink-0"
-                    >
-                      {gameState.recordedPlates.west?.isAnomaly
-                        ? '✓ West Pier Telescope (−250 m)'
-                        : '◎ Inspect West Pier Telescope (−250 m)'}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleInspectPlumbLine}
-                      className="px-3.5 py-2 text-xs font-mono-tabular bg-[#0d1526] hover:bg-[#16223d] text-[#cbd5e1] border border-slate-700/80 rounded transition-colors cursor-pointer whitespace-nowrap shrink-0"
-                    >
-                      {gameState.plumbLineInspected
-                        ? '✓ Meridian Plumb-Line'
-                        : 'Inspect Meridian Plumb-Line'}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        soundEngine.initOnInteraction();
-                        soundEngine.playVernierTick('medium');
-                        setInspectionToast(null);
-                        setGameState((prev) => ({
-                          ...prev,
-                          scene: 'CHART_ROOM',
-                        }));
-                      }}
-                      className="px-3.5 py-2 text-xs font-mono-tabular bg-[#141d30] hover:bg-[#1e2c48] text-[#f3e5ab] border border-[#d4a359]/40 rounded transition-colors cursor-pointer whitespace-nowrap shrink-0"
-                    >
-                      Enter Chart Room (Blink Comparator)
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        soundEngine.initOnInteraction();
-                        soundEngine.playVernierTick('medium');
-                        setInspectionToast(null);
-                        setGameState((prev) => ({
-                          ...prev,
-                          scene: 'EAST_STATION',
-                          activeStation: 'east',
-                        }));
-                      }}
-                      className="px-3.5 py-2 text-xs font-mono-tabular bg-[#111c33] hover:bg-[#19294a] text-[#d8dee9] border border-slate-700 rounded transition-colors cursor-pointer whitespace-nowrap shrink-0"
-                    >
-                      Walk to East Cliffside Pier (+250 m) →
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        soundEngine.initOnInteraction();
-                        soundEngine.playVernierTick('medium');
-                        setInspectionToast(null);
-                        setGameState((prev) => ({
-                          ...prev,
-                          scene: 'EXTERIOR_DECK',
-                          activeStation: 'west',
-                        }));
-                      }}
-                      className="px-3.5 py-2 text-xs font-mono-tabular bg-[#111c33] hover:bg-[#19294a] text-[#d8dee9] border border-slate-700 rounded transition-colors cursor-pointer whitespace-nowrap shrink-0"
-                    >
-                      ← Return to West Observation Deck (−250 m)
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleOpenTelescopeFromStation('east')}
-                      className="px-3.5 py-2 text-xs font-mono-tabular bg-[#111c33] hover:bg-[#19294a] text-[#f3e5ab] border border-[#d4a359]/50 rounded transition-colors cursor-pointer whitespace-nowrap shrink-0"
-                    >
-                      {gameState.recordedPlates.east?.isAnomaly
-                        ? '✓ East Pier Telescope (+250 m)'
-                        : '◎ Inspect East Pier Telescope (+250 m)'}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleInspectEastTheodolite}
-                      className="px-3.5 py-2 text-xs font-mono-tabular bg-[#0d1526] hover:bg-[#16223d] text-[#cbd5e1] border border-slate-700/80 rounded transition-colors cursor-pointer whitespace-nowrap shrink-0"
-                    >
-                      {gameState.eastBeaconAligned
-                        ? '✓ Baseline Theodolite (500.0 m)'
-                        : 'Inspect Baseline Theodolite'}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        soundEngine.initOnInteraction();
-                        soundEngine.playVernierTick('medium');
-                        setInspectionToast(null);
-                        setGameState((prev) => ({
-                          ...prev,
-                          scene: 'CHART_ROOM',
-                        }));
-                      }}
-                      className="px-3.5 py-2 text-xs font-mono-tabular bg-[#141d30] hover:bg-[#1e2c48] text-[#f3e5ab] border border-[#d4a359]/40 rounded transition-colors cursor-pointer whitespace-nowrap shrink-0"
-                    >
-                      Enter Chart Room (Blink Comparator)
-                    </button>
-                  </>
+                {/* Subtle World-Space Terrace Station Markers (Walk & Interact) */}
+                {(gameState.scene === 'EXTERIOR_DECK' ||
+                  gameState.scene === 'EAST_STATION') && (
+                  <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2 pt-0.5">
+                    {WORLD_HOTSPOTS.filter((h) => h.scene === gameState.scene).map(
+                      (hs) => {
+                        const isNear = nearbyHotspot?.id === hs.id;
+                        return (
+                          <button
+                            key={hs.id}
+                            type="button"
+                            data-testid={`hotspot-marker-${hs.id}`}
+                            onClick={() => handleHotspotInteract(hs)}
+                            className={`px-2.5 py-1 text-[11px] font-mono-tabular rounded border transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                              isNear
+                                ? 'bg-[#1a2642]/95 border-[#d4a359] text-[#f3e5ab]'
+                                : 'bg-[#060a14]/80 hover:bg-[#0f182d] border-slate-800 text-[#94a3b8] hover:text-[#d8dee9]'
+                            }`}
+                          >
+                            {isNear ? `● [E] ${hs.shortTag}` : `◦ ${hs.shortTag}`}
+                          </button>
+                        );
+                      }
+                    )}
+                  </div>
                 )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
@@ -669,6 +816,7 @@ export default function App() {
           existingPlate={gameState.recordedPlates[gameState.activeStation]}
           onRecordPlate={handleRecordPlate}
           onInspectStar={handleInspectStar}
+          onOpticalStateChange={setOpticalTelemetry}
           onClose={() => setIsTelescopeOpen(false)}
         />
       )}
@@ -687,6 +835,7 @@ export default function App() {
             setGameState((prev) => ({
               ...prev,
               scene: 'EXTERIOR_DECK',
+              activeStation: 'west',
             }));
           }}
           onOpenTelescopeStation={(st) => {
@@ -694,6 +843,7 @@ export default function App() {
               ...prev,
               activeStation: st,
               scene: st === 'west' ? 'EXTERIOR_DECK' : 'EAST_STATION',
+              playerX: st === 'west' ? 0.25 : 0.5,
             }));
             setIsTelescopeOpen(true);
           }}
@@ -710,7 +860,19 @@ export default function App() {
           eastPlate={gameState.recordedPlates.east}
           unlockedDocIds={gameState.unlockedDocIds}
           chartPuzzleSolved={gameState.chartPuzzleSolved}
+          activeTutorialStep={activeTutorialStep}
+          onReplayPrologue={() => setActiveCinematic('PROLOGUE_1926')}
           onClose={() => setIsJournalOpen(false)}
+        />
+      )}
+
+      {/* ========================================================= */}
+      {/* CINEMATIC DIRECTOR MODAL (PROLOGUE & STAGE REVELATIONS)   */}
+      {/* ========================================================= */}
+      {activeCinematic && (
+        <CinematicDirectorModal
+          cinematicId={activeCinematic}
+          onComplete={() => setActiveCinematic(null)}
         />
       )}
 
@@ -764,6 +926,17 @@ export default function App() {
               </button>
               <button
                 type="button"
+                onClick={() => {
+                  setIsPaused(false);
+                  soundEngine.setPaused(false);
+                  setActiveCinematic('PROLOGUE_1926');
+                }}
+                className="w-full py-2.5 px-4 text-xs font-mono-tabular uppercase tracking-wider bg-[#121c33] hover:bg-[#1a2847] text-[#f3e5ab] border border-[#d4a359]/35 rounded cursor-pointer"
+              >
+                Replay 1926 Prologue
+              </button>
+              <button
+                type="button"
                 onClick={handleResetSurvey}
                 className="w-full py-2.5 px-4 text-xs font-mono-tabular uppercase tracking-wider bg-[#121c33] hover:bg-[#1a2847] text-[#cbd5e1] border border-slate-700 rounded cursor-pointer"
               >
@@ -786,18 +959,18 @@ export default function App() {
       )}
 
       {/* ========================================================= */}
-      {/* MILESTONE 01 COMPLETION MODAL (`dataset.state='gameover'`)*/}
+      {/* MILESTONE 02 COMPLETION MODAL (`dataset.state='gameover'`)*/}
       {/* ========================================================= */}
       {isMilestoneModalOpen && (
         <div
           role="dialog"
-          aria-label="Milestone 01 Complete — The First Night"
+          aria-label="Survey Complete — The Living World"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#03050a]/90 pointer-events-auto"
         >
           <div className="w-full max-w-lg bg-[#0b0e1c] border border-[#b388eb]/55 rounded-lg p-6 text-center space-y-5 shadow-2xl">
             <div>
               <div className="text-xs font-mono-tabular uppercase tracking-widest text-[#b388eb]">
-                MILESTONE 01 COMPLETE · THE FIRST NIGHT
+                SURVEY COMPLETE · NADIR OBSERVATORY (1926)
               </div>
               <h2 className="text-3xl font-display font-semibold text-[#f3e5ab] mt-1">
                 “A Star Should Not Move When You Move”
@@ -834,7 +1007,7 @@ export default function App() {
                 onClick={() => setIsMilestoneModalOpen(false)}
                 className="w-full sm:w-auto flex-1 py-2.5 px-4 text-xs font-mono-tabular uppercase tracking-wider bg-[#151e36] hover:bg-[#1f2d50] text-[#f3e5ab] border border-[#d4a359]/45 rounded cursor-pointer whitespace-nowrap shrink-0"
               >
-                Continue Observing Sky
+                Continue Exploring Nadir
               </button>
               <button
                 type="button"

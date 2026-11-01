@@ -3,6 +3,7 @@ import {
   CATALOG_STARS,
   getObservedStarPosition,
   calculateOpticalSharpness,
+  validatePlateExposure,
   findNearestStarInField,
   type CatalogStar,
   type RecordedPlate,
@@ -17,6 +18,11 @@ export interface TelescopeModalProps {
   existingPlate: RecordedPlate | null;
   onRecordPlate: (plate: RecordedPlate) => void;
   onInspectStar: (starId: string) => void;
+  onOpticalStateChange?: (state: {
+    selectedStarId: string;
+    isCentered: boolean;
+    isSharp: boolean;
+  }) => void;
   onClose: () => void;
 }
 
@@ -26,37 +32,63 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
   existingPlate,
   onRecordPlate,
   onInspectStar,
+  onOpticalStateChange,
   onClose,
 }) => {
-  // Initial aim starts near Cygnus center (Sadr), so player can slew or select Nadir-IX
+  // Start aimed at Gamma Cygni (Sadr, central cross star) and focused at 62mm (standard infinite focus)
+  // so the player genuinely selects/centers Nadir-IX and racks the focus vernier to 74mm!
   const [aim, setAim] = useState<{ x: number; y: number }>(() => {
-    const nadir = CATALOG_STARS.find((s) => s.id === 'NADIR_IX')!;
-    const pos = getObservedStarPosition(nadir, station);
+    const startStar =
+      existingPlate?.isAnomaly
+        ? CATALOG_STARS.find((s) => s.id === 'NADIR_IX')!
+        : CATALOG_STARS.find((s) => s.id === 'GAMMA_CYGNI')!;
+    const pos = getObservedStarPosition(startStar, station);
     return { x: pos.x, y: pos.y };
   });
 
-  const [focusDial, setFocusDial] = useState<number>(74);
+  const [focusDial, setFocusDial] = useState<number>(() =>
+    existingPlate?.isAnomaly ? 74 : 62
+  );
   const [zoom, setZoom] = useState<1 | 2.5 | 5>(2.5);
-  const [selectedStarId, setSelectedStarId] = useState<string>('NADIR_IX');
+  const [selectedStarId, setSelectedStarId] = useState<string>(() =>
+    existingPlate?.isAnomaly ? 'NADIR_IX' : 'GAMMA_CYGNI'
+  );
   const [flashExposure, setFlashExposure] = useState(false);
-  const [statusBanner, setStatusBanner] = useState<string | null>(null);
+  const [statusBanner, setStatusBanner] = useState<{
+    tone: 'info' | 'warning' | 'success';
+    text: string;
+  } | null>(null);
 
   const eyepieceCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const selectedStar: CatalogStar =
     CATALOG_STARS.find((s) => s.id === selectedStarId) ?? CATALOG_STARS[4];
   const selectedPos = getObservedStarPosition(selectedStar, station);
-  const sharpness = calculateOpticalSharpness(focusDial, selectedStar.focalPlane);
-  const isSharpEnough = sharpness >= 0.85;
-  const aimDistanceToSelected = Math.hypot(aim.x - selectedPos.x, aim.y - selectedPos.y);
-  const isCenteredOnSelected = aimDistanceToSelected <= 0.065;
 
-  // Notify parent when a star is locked
+  const exposureCheck = validatePlateExposure(
+    aim.x,
+    aim.y,
+    focusDial,
+    selectedStar,
+    station
+  );
+  const sharpness = exposureCheck.sharpness;
+  const isSharpEnough = exposureCheck.isSharp;
+  const isCenteredOnSelected = exposureCheck.isCentered;
+
   useEffect(() => {
     if (isCenteredOnSelected) {
       onInspectStar(selectedStar.id);
     }
   }, [selectedStar.id, isCenteredOnSelected, onInspectStar]);
+
+  useEffect(() => {
+    onOpticalStateChange?.({
+      selectedStarId: selectedStar.id,
+      isCentered: isCenteredOnSelected,
+      isSharp: isSharpEnough,
+    });
+  }, [selectedStar.id, isCenteredOnSelected, isSharpEnough, onOpticalStateChange]);
 
   // Render circular optical eyepiece canvas
   useEffect(() => {
@@ -135,10 +167,9 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
         const baseRadius = Math.max(2.6, (6.5 - star.magnitude) * 1.15);
 
         if (defocus > 0.15) {
-          // Out-of-focus optical bokeh ring + chromatic aberration
           const bokehR = baseRadius + defocus * 24;
           ctx.strokeStyle = star.isAnomaly
-            ? `rgba(179, 136, 235, ${0.55 - defocus * 0.35})`
+            ? `rgba(179, 136, 235, ${0.58 - defocus * 0.35})`
             : `rgba(210, 228, 255, ${0.5 - defocus * 0.35})`;
           ctx.lineWidth = 2.2;
           ctx.beginPath();
@@ -146,7 +177,6 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
           ctx.stroke();
         }
 
-        // Star glow
         const glowR = baseRadius * (star.isAnomaly ? 6.5 : 4.2);
         const g = ctx.createRadialGradient(sx, sy, 0.5, sx, sy, glowR);
         if (star.isAnomaly) {
@@ -163,7 +193,6 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
         ctx.arc(sx, sy, glowR, 0, Math.PI * 2);
         ctx.fill();
 
-        // Diffraction spikes when sharp
         if (starSharp >= 0.8) {
           ctx.strokeStyle = star.isAnomaly
             ? 'rgba(243, 229, 171, 0.65)'
@@ -178,7 +207,6 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
           ctx.stroke();
         }
 
-        // Anomaly internal non-Euclidean double ring when focused
         if (star.isAnomaly && starSharp >= 0.75) {
           ctx.strokeStyle = 'rgba(179, 136, 235, 0.75)';
           ctx.lineWidth = 1.2;
@@ -190,13 +218,11 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
           ctx.stroke();
         }
 
-        // Pinpoint core
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.arc(sx, sy, baseRadius * (0.6 + 0.4 * starSharp), 0, Math.PI * 2);
         ctx.fill();
 
-        // Subtle label in eyepiece
         ctx.fillStyle =
           star.id === selectedStarId
             ? '#f3e5ab'
@@ -206,12 +232,14 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
       }
 
       // Brass reticle crosshair overlay
-      ctx.strokeStyle = isCenteredOnSelected && isSharpEnough
-        ? 'rgba(243, 229, 171, 0.78)'
-        : 'rgba(212, 163, 89, 0.38)';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle =
+        isCenteredOnSelected && isSharpEnough
+          ? 'rgba(110, 231, 183, 0.85)'
+          : isCenteredOnSelected
+            ? 'rgba(243, 229, 171, 0.75)'
+            : 'rgba(212, 163, 89, 0.38)';
+      ctx.lineWidth = 1.1;
 
-      // Crosshair lines with central gap
       ctx.beginPath();
       ctx.moveTo(0, half);
       ctx.lineTo(half - 22, half);
@@ -223,7 +251,6 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
       ctx.lineTo(half, size);
       ctx.stroke();
 
-      // Inner astrometric measurement rings
       ctx.beginPath();
       ctx.arc(half, half, 22, 0, Math.PI * 2);
       ctx.arc(half, half, 68, 0, Math.PI * 2);
@@ -243,7 +270,7 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
           if (!isDisposed) {
             renderEyepiece(performance.now());
           }
-        }, 24);
+        }, 180);
       }
     };
 
@@ -261,7 +288,15 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
     setSelectedStarId(star.id);
     setAim({ x: pos.x, y: pos.y });
     onInspectStar(star.id);
-    setStatusBanner(null);
+    const nextSharp = calculateOpticalSharpness(focusDial, star.focalPlane);
+    if (nextSharp < 0.85) {
+      setStatusBanner({
+        tone: 'info',
+        text: `${star.commonName} centered in reticle, but optical image is defocused (${Math.round(nextSharp * 100)}%). Rack Focus Vernier to ${star.focalPlane.toFixed(1)} mm.`,
+      });
+    } else {
+      setStatusBanner(null);
+    }
   };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -283,14 +318,32 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
   const handleSnapFocus = () => {
     soundEngine.playVernierTick('medium');
     setFocusDial(selectedStar.focalPlane);
+    setStatusBanner({
+      tone: 'info',
+      text: `Focus Vernier racked to ${selectedStar.focalPlane.toFixed(1)} mm (100% Optical Sharpness). Ready to expose glass plate.`,
+    });
   };
 
   const handleExposePlate = () => {
-    // Auto-center and auto-focus if player has selected the target star so the UX is never frustrating
-    const pos = getObservedStarPosition(selectedStar, station);
-    setAim({ x: pos.x, y: pos.y });
-    setFocusDial(selectedStar.focalPlane);
+    // STRICT VALIDATION: No silent auto-centering or auto-focusing!
+    const validation = validatePlateExposure(
+      aim.x,
+      aim.y,
+      focusDial,
+      selectedStar,
+      station
+    );
 
+    if (!validation.canExpose) {
+      soundEngine.playVernierTick('light');
+      setStatusBanner({
+        tone: 'warning',
+        text: validation.reason ?? 'Center and focus the target star before exposing the plate.',
+      });
+      return;
+    }
+
+    const pos = getObservedStarPosition(selectedStar, station);
     soundEngine.playPlateShutter(selectedStar.isAnomaly);
     setFlashExposure(true);
     setTimeout(() => setFlashExposure(false), 450);
@@ -300,7 +353,7 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
       starId: selectedStar.id,
       starDesignation: `${selectedStar.commonName} (${selectedStar.designation})`,
       timestamp: station === 'west' ? '02:18 ST' : '02:44 ST',
-      focusSharpness: Math.max(0.95, sharpness),
+      focusSharpness: validation.sharpness,
       observedX: pos.x,
       observedY: pos.y,
       raObserved: pos.ra,
@@ -310,11 +363,12 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
     };
 
     onRecordPlate(newPlate);
-    setStatusBanner(
-      selectedStar.isAnomaly
-        ? `Glass Plate ${station === 'west' ? 'W-09' : 'E-09'} exposed: ${selectedStar.commonName} recorded at RA ${pos.ra}, DEC ${pos.dec} (Zenith Angle ${pos.angleDeg > 0 ? '+' : ''}${pos.angleDeg}°).`
-        : `Calibration plate exposed for ${selectedStar.commonName}. Note: Record OBJECT NADIR-IX (The Wanderer) to test Director Vane’s anomaly.`
-    );
+    setStatusBanner({
+      tone: 'success',
+      text: selectedStar.isAnomaly
+        ? `✓ Glass Plate ${station === 'west' ? 'W-09' : 'E-09'} exposed: ${selectedStar.commonName} recorded at RA ${pos.ra}, DEC ${pos.dec} (Zenith Angle ${pos.angleDeg > 0 ? '+' : ''}${pos.angleDeg}°).`
+        : `Calibration plate exposed for ${selectedStar.commonName}. Note: Select and focus OBJECT NADIR-IX (The Wanderer) at 74.0 mm to test Director Vane’s anomaly.`,
+    });
   };
 
   return (
@@ -342,11 +396,25 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
               height={360}
               onClick={handleCanvasClick}
               data-testid="telescope-eyepiece-canvas"
-              className="w-[290px] h-[290px] sm:w-[350px] sm:h-[350px] rounded-full cursor-crosshair shadow-[0_0_50px_rgba(0,0,0,0.9)]"
+              className="w-[280px] h-[280px] sm:w-[340px] sm:h-[340px] rounded-full cursor-crosshair shadow-[0_0_50px_rgba(0,0,0,0.9)]"
             />
             {flashExposure && (
               <div className="absolute inset-0 rounded-full bg-[#f3e5ab]/70 pointer-events-none transition-opacity duration-300" />
             )}
+          </div>
+
+          {/* Optical Lock & Sharpness Telemetry Strip */}
+          <div className="w-full flex items-center justify-between text-[11px] font-mono-tabular px-2 pb-2">
+            <span className={isCenteredOnSelected ? 'text-emerald-400' : 'text-amber-300'}>
+              {isCenteredOnSelected
+                ? `● RETICLE LOCKED: ${selectedStar.commonName.toUpperCase()}`
+                : `▲ OFF-CENTER: SLEW OR SELECT TARGET`}
+            </span>
+            <span className={isSharpEnough ? 'text-emerald-400' : 'text-amber-300'}>
+              {isSharpEnough
+                ? `● FOCUS LOCKED (${Math.round(sharpness * 100)}%)`
+                : `▲ DEFOCUSED (${Math.round(sharpness * 100)}% · NEED ≥85%)`}
+            </span>
           </div>
 
           {/* Fine Slew & Magnification Bar */}
@@ -358,7 +426,7 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                   soundEngine.playVernierTick('light');
                   setAim((a) => ({ ...a, x: Math.max(0.15, a.x - 0.03) }));
                 }}
-                className="px-2.5 py-1.5 text-xs font-mono-tabular bg-[#111a2e] hover:bg-[#1a2744] text-[#d8dee9] border border-slate-700/70 rounded whitespace-nowrap shrink-0"
+                className="px-2.5 py-1.5 text-xs font-mono-tabular bg-[#111a2e] hover:bg-[#1a2744] text-[#d8dee9] border border-slate-700/70 rounded whitespace-nowrap shrink-0 cursor-pointer"
               >
                 ← West
               </button>
@@ -368,7 +436,7 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                   soundEngine.playVernierTick('light');
                   setAim((a) => ({ ...a, y: Math.max(0.15, a.y - 0.03) }));
                 }}
-                className="px-2.5 py-1.5 text-xs font-mono-tabular bg-[#111a2e] hover:bg-[#1a2744] text-[#d8dee9] border border-slate-700/70 rounded whitespace-nowrap shrink-0"
+                className="px-2.5 py-1.5 text-xs font-mono-tabular bg-[#111a2e] hover:bg-[#1a2744] text-[#d8dee9] border border-slate-700/70 rounded whitespace-nowrap shrink-0 cursor-pointer"
               >
                 ↑ North
               </button>
@@ -378,7 +446,7 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                   soundEngine.playVernierTick('light');
                   setAim((a) => ({ ...a, y: Math.min(0.75, a.y + 0.03) }));
                 }}
-                className="px-2.5 py-1.5 text-xs font-mono-tabular bg-[#111a2e] hover:bg-[#1a2744] text-[#d8dee9] border border-slate-700/70 rounded whitespace-nowrap shrink-0"
+                className="px-2.5 py-1.5 text-xs font-mono-tabular bg-[#111a2e] hover:bg-[#1a2744] text-[#d8dee9] border border-slate-700/70 rounded whitespace-nowrap shrink-0 cursor-pointer"
               >
                 ↓ South
               </button>
@@ -388,7 +456,7 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                   soundEngine.playVernierTick('light');
                   setAim((a) => ({ ...a, x: Math.min(0.85, a.x + 0.03) }));
                 }}
-                className="px-2.5 py-1.5 text-xs font-mono-tabular bg-[#111a2e] hover:bg-[#1a2744] text-[#d8dee9] border border-slate-700/70 rounded whitespace-nowrap shrink-0"
+                className="px-2.5 py-1.5 text-xs font-mono-tabular bg-[#111a2e] hover:bg-[#1a2744] text-[#d8dee9] border border-slate-700/70 rounded whitespace-nowrap shrink-0 cursor-pointer"
               >
                 East →
               </button>
@@ -403,7 +471,7 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                     soundEngine.playVernierTick('light');
                     setZoom(z);
                   }}
-                  className={`px-2.5 py-1 text-xs font-mono-tabular rounded transition-colors whitespace-nowrap shrink-0 ${
+                  className={`px-2.5 py-1 text-xs font-mono-tabular rounded transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                     zoom === z
                       ? 'bg-[#d4a359] text-[#050811] font-medium'
                       : 'text-[#94a3b8] hover:text-white'
@@ -427,22 +495,26 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                     : 'East Cliffside Transit Instrument'}
                 </h2>
                 <p className="text-xs text-[#94a3b8]">
-                  Baseline Position: {station === 'west' ? '−250.0 m West of Meridian' : '+250.0 m East of Meridian'}
+                  Baseline Position:{' '}
+                  {station === 'west'
+                    ? '−250.0 m West of Meridian'
+                    : '+250.0 m East of Meridian'}
                 </p>
               </div>
               <button
                 type="button"
+                data-testid="telescope-step-back-btn"
                 onClick={onClose}
-                className="px-3 py-1.5 text-xs font-mono-tabular text-[#cbd5e1] hover:text-white bg-[#131d33] hover:bg-[#1c2b4a] border border-slate-700 rounded whitespace-nowrap shrink-0"
+                className="px-3 py-1.5 text-xs font-mono-tabular text-[#cbd5e1] hover:text-white bg-[#131d33] hover:bg-[#1c2b4a] border border-slate-700 rounded whitespace-nowrap shrink-0 cursor-pointer"
               >
-                Step Back
+                Step Back [Esc]
               </button>
             </div>
 
             {/* Catalog Target Selector */}
             <div className="mt-3">
               <label className="block text-xs font-mono-tabular uppercase tracking-wider text-[#94a3b8] mb-1.5">
-                1. Select Celestial Target in Sector IV
+                1. Select &amp; Slew to Celestial Target in Sector IV
               </label>
               <div className="grid grid-cols-2 gap-1.5 max-h-[148px] overflow-y-auto pr-1">
                 {CATALOG_STARS.map((star) => {
@@ -451,8 +523,9 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                     <button
                       key={star.id}
                       type="button"
+                      data-testid={`select-star-${star.id}`}
                       onClick={() => handleSelectAndCenterStar(star)}
-                      className={`px-2.5 py-1.5 text-left rounded border transition-colors flex items-center justify-between ${
+                      className={`px-2.5 py-1.5 text-left rounded border transition-colors flex items-center justify-between cursor-pointer ${
                         isSelected
                           ? 'bg-[#1a2642] border-[#d4a359] text-[#f3e5ab]'
                           : 'bg-[#0e1629] border-slate-800/90 text-[#cbd5e1] hover:border-slate-600'
@@ -461,7 +534,11 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                       <span className="text-xs font-medium truncate">
                         {star.commonName}
                       </span>
-                      <span className="text-[11px] font-mono-tabular text-[#94a3b8] ml-1 shrink-0">
+                      <span
+                        className={`text-[10px] font-mono-tabular ml-1 shrink-0 ${
+                          star.isAnomaly ? 'text-[#b388eb] font-semibold' : 'text-[#94a3b8]'
+                        }`}
+                      >
                         {star.isAnomaly ? 'ANOMALY' : `m ${star.magnitude.toFixed(1)}`}
                       </span>
                     </button>
@@ -492,6 +569,7 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
               <div className="flex items-center gap-2">
                 <input
                   id="focus-vernier-slider"
+                  data-testid="focus-vernier-slider"
                   type="range"
                   min={30}
                   max={95}
@@ -505,8 +583,9 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                 />
                 <button
                   type="button"
+                  data-testid="fine-focus-btn"
                   onClick={handleSnapFocus}
-                  className="px-2.5 py-1 text-xs font-mono-tabular bg-[#152038] hover:bg-[#1e2e50] text-[#f3e5ab] border border-[#d4a359]/40 rounded whitespace-nowrap shrink-0"
+                  className="px-2.5 py-1 text-xs font-mono-tabular bg-[#152038] hover:bg-[#1e2e50] text-[#f3e5ab] border border-[#d4a359]/40 rounded whitespace-nowrap shrink-0 cursor-pointer"
                 >
                   Fine Focus ({selectedStar.focalPlane}mm)
                 </button>
@@ -520,7 +599,7 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
                   {selectedStar.designation}
                 </span>
                 <span className="text-xs font-mono-tabular text-[#94a3b8] whitespace-nowrap shrink-0">
-                  Focal Plane: {selectedStar.focalPlane.toFixed(1)} mm
+                  Target Plane: {selectedStar.focalPlane.toFixed(1)} mm
                 </span>
               </div>
               <div className="grid grid-cols-3 gap-2 pt-1 text-xs font-mono-tabular">
@@ -554,9 +633,16 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
             {statusBanner && (
               <div
                 role="status"
-                className="p-2.5 rounded bg-[#132038] border border-[#d4a359]/50 text-xs text-[#f3e5ab] leading-relaxed"
+                data-testid="telescope-status-banner"
+                className={`p-2.5 rounded border text-xs leading-relaxed ${
+                  statusBanner.tone === 'warning'
+                    ? 'bg-[#261912] border-amber-500/60 text-amber-200'
+                    : statusBanner.tone === 'success'
+                      ? 'bg-[#0f241d] border-emerald-500/50 text-emerald-200'
+                      : 'bg-[#132038] border-[#d4a359]/50 text-[#f3e5ab]'
+                }`}
               >
-                {statusBanner}
+                {statusBanner.text}
               </div>
             )}
 
@@ -569,10 +655,15 @@ export const TelescopeModal: React.FC<TelescopeModalProps> = ({
             <div className="flex items-center gap-2.5">
               <button
                 type="button"
+                data-testid="record-observation-btn"
                 onClick={handleExposePlate}
-                className="flex-1 py-2.5 px-4 text-sm font-medium bg-[#d4a359] hover:bg-[#e2b46b] text-[#050811] rounded transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                className={`flex-1 py-2.5 px-4 text-sm font-medium rounded transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                  exposureCheck.canExpose
+                    ? 'bg-[#d4a359] hover:bg-[#e2b46b] text-[#050811]'
+                    : 'bg-[#1e293b] hover:bg-[#283548] text-[#cbd5e1] border border-[#d4a359]/40'
+                }`}
               >
-                Record Observation ({station === 'west' ? 'West Plate' : 'East Plate'})
+                Record Observation ({station === 'west' ? 'West Plate W-09' : 'East Plate E-09'})
               </button>
             </div>
           </div>

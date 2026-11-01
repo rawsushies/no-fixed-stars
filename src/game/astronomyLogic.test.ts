@@ -1,134 +1,220 @@
-import test from 'node:test';
+import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CATALOG_STARS,
   getObservedStarPosition,
   calculateOpticalSharpness,
+  validatePlateExposure,
   findNearestStarInField,
   calculateParallaxIntersection,
   deriveCosmicStage,
+  deriveActiveTutorialStep,
+  findNearbyHotspot,
   createInitialGameState,
   serializeGameState,
   deserializeGameState,
   type RecordedPlate,
 } from './astronomyLogic';
 
-test('fixed catalog stars have identical positions at West and East observation stations', () => {
-  const deneb = CATALOG_STARS.find((s) => s.id === 'ALPHA_CYGNI');
-  assert.ok(deneb);
-  const westPos = getObservedStarPosition(deneb, 'west');
-  const eastPos = getObservedStarPosition(deneb, 'east');
-  assert.equal(westPos.x, eastPos.x);
-  assert.equal(westPos.y, eastPos.y);
-  assert.equal(westPos.ra, eastPos.ra);
-});
+describe('NO FIXED STARS — Astrometric & Cosmic Anomaly Logic (Milestone 02)', () => {
+  it('keeps ordinary catalog stars invariant across the 500m West/East baseline', () => {
+    const deneb = CATALOG_STARS.find((s) => s.id === 'ALPHA_CYGNI')!;
+    const west = getObservedStarPosition(deneb, 'west');
+    const east = getObservedStarPosition(deneb, 'east');
 
-test('anomalous star NADIR_IX exhibits deterministic displacement between West and East stations', () => {
-  const nadir = CATALOG_STARS.find((s) => s.id === 'NADIR_IX');
-  assert.ok(nadir);
-  const westPos = getObservedStarPosition(nadir, 'west');
-  const eastPos = getObservedStarPosition(nadir, 'east');
-  assert.notEqual(westPos.x, eastPos.x);
-  assert.ok(eastPos.x > westPos.x, 'East station shifts Nadir-IX eastward (impossible negative parallax)');
-  assert.equal(westPos.angleDeg, -2.15);
-  assert.equal(eastPos.angleDeg, 2.15);
-});
-
-test('optical sharpness peaks at the star focal plane and drops off smoothly', () => {
-  const sharpAt74 = calculateOpticalSharpness(74, 74);
-  assert.equal(sharpAt74, 1);
-
-  const slightOffset = calculateOpticalSharpness(71, 74);
-  assert.ok(slightOffset >= 0.85, 'Within 3 units of focal plane remains sharp enough for exposure');
-
-  const blurry = calculateOpticalSharpness(30, 74);
-  assert.equal(blurry, 0);
-});
-
-test('findNearestStarInField locks onto Nadir-IX at station-specific coordinates', () => {
-  const nadir = CATALOG_STARS.find((s) => s.id === 'NADIR_IX')!;
-  const westPos = getObservedStarPosition(nadir, 'west');
-
-  const foundWest = findNearestStarInField(westPos.x + 0.01, westPos.y - 0.01, 'west');
-  assert.ok(foundWest);
-  assert.equal(foundWest.star.id, 'NADIR_IX');
-});
-
-test('deriveCosmicStage progresses cleanly through Stages 1, 2, 3, and 4', () => {
-  const mockPlate = (station: 'west' | 'east', isAnomaly: boolean): RecordedPlate => ({
-    station,
-    starId: isAnomaly ? 'NADIR_IX' : 'ALPHA_CYGNI',
-    starDesignation: isAnomaly ? 'OBJECT NADIR-IX' : 'Deneb',
-    timestamp: '02:15 ST',
-    focusSharpness: 0.96,
-    observedX: 0.5,
-    observedY: 0.36,
-    raObserved: '20h 54m',
-    decObserved: '+42° 09′',
-    zenithAngleDeg: station === 'west' ? -2.15 : 2.15,
-    isAnomaly,
+    assert.equal(west.x, east.x);
+    assert.equal(west.y, east.y);
+    assert.equal(west.ra, east.ra);
+    assert.equal(west.angleDeg, east.angleDeg);
   });
 
-  assert.equal(
-    deriveCosmicStage({
-      inspectedStarIds: [],
-      westPlate: null,
-      eastPlate: null,
-      chartPuzzleSolved: false,
-    }),
-    1
-  );
+  it('displaces Object Nadir-IX (The Wanderer) in inverted direction across West and East stations', () => {
+    const nadir = CATALOG_STARS.find((s) => s.id === 'NADIR_IX')!;
+    const west = getObservedStarPosition(nadir, 'west');
+    const east = getObservedStarPosition(nadir, 'east');
 
-  assert.equal(
-    deriveCosmicStage({
-      inspectedStarIds: ['NADIR_IX'],
-      westPlate: null,
-      eastPlate: null,
-      chartPuzzleSolved: false,
-    }),
-    2
-  );
+    assert.notEqual(west.x, east.x);
+    assert.ok(east.x > west.x, 'Anomaly shifts East when observer moves East (negative parallax)');
+    assert.equal(west.angleDeg, -2.15);
+    assert.equal(east.angleDeg, 2.15);
+  });
 
-  assert.equal(
-    deriveCosmicStage({
-      inspectedStarIds: ['NADIR_IX'],
-      westPlate: mockPlate('west', true),
-      eastPlate: mockPlate('east', true),
-      chartPuzzleSolved: false,
-    }),
-    3
-  );
+  it('computes optical sharpness peaking at 1.0 when focus vernier matches star focalPlane', () => {
+    const nadir = CATALOG_STARS.find((s) => s.id === 'NADIR_IX')!;
+    const exact = calculateOpticalSharpness(74, nadir.focalPlane);
+    const slightOff = calculateOpticalSharpness(71, nadir.focalPlane);
+    const farOff = calculateOpticalSharpness(40, nadir.focalPlane);
 
-  assert.equal(
-    deriveCosmicStage({
-      inspectedStarIds: ['NADIR_IX'],
-      westPlate: mockPlate('west', true),
-      eastPlate: mockPlate('east', true),
-      chartPuzzleSolved: true,
-    }),
-    4
-  );
-});
+    assert.equal(exact, 1);
+    assert.ok(slightOff >= 0.85, 'Within 3mm should still be sharp enough to expose plate');
+    assert.equal(farOff, 0);
+  });
 
-test('calculateParallaxIntersection identifies impossible geometry for Nadir-IX vs normal stars', () => {
-  const normalResult = calculateParallaxIntersection('ALPHA_CYGNI', null, null);
-  assert.equal(normalResult.isImpossibleGeometry, false);
-  assert.equal(normalResult.angularDisplacementArcsec, 0);
+  it('strictly validates telescope plate exposure without auto-centering or auto-focusing', () => {
+    const nadir = CATALOG_STARS.find((s) => s.id === 'NADIR_IX')!;
+    const westPos = getObservedStarPosition(nadir, 'west');
 
-  const anomalyResult = calculateParallaxIntersection('NADIR_IX', null, null);
-  assert.equal(anomalyResult.isImpossibleGeometry, true);
-  assert.ok(anomalyResult.angularDisplacementArcsec > 15000);
-  assert.equal(anomalyResult.parallaxAngleDeg, -2.15);
-});
+    // Off-center and defocused
+    const badBoth = validatePlateExposure(0.2, 0.2, 50, nadir, 'west');
+    assert.equal(badBoth.canExpose, false);
+    assert.equal(badBoth.isCentered, false);
+    assert.equal(badBoth.isSharp, false);
 
-test('save state serialization and deserialization preserves progress and respects autostart', () => {
-  const initial = createInitialGameState(false);
-  initial.cosmicStage = 3;
-  initial.plumbLineInspected = true;
-  const raw = serializeGameState(initial);
+    // Centered but defocused (at 62mm instead of 74mm)
+    const badFocus = validatePlateExposure(westPos.x, westPos.y, 60, nadir, 'west');
+    assert.equal(badFocus.canExpose, false);
+    assert.equal(badFocus.isCentered, true);
+    assert.equal(badFocus.isSharp, false);
 
-  const restored = deserializeGameState(raw, true);
-  assert.equal(restored.cosmicStage, 3);
-  assert.equal(restored.plumbLineInspected, true);
-  assert.equal(restored.scene, 'EXTERIOR_DECK');
+    // Centered and focused at 74mm
+    const valid = validatePlateExposure(westPos.x, westPos.y, 74, nadir, 'west');
+    assert.equal(valid.canExpose, true);
+    assert.equal(valid.isCentered, true);
+    assert.equal(valid.isSharp, true);
+  });
+
+  it('finds the nearest star in the telescope field within tolerance', () => {
+    const nadir = CATALOG_STARS.find((s) => s.id === 'NADIR_IX')!;
+    const westPos = getObservedStarPosition(nadir, 'west');
+
+    const hit = findNearestStarInField(westPos.x + 0.01, westPos.y - 0.01, 'west', 0.065);
+    assert.ok(hit !== null);
+    assert.equal(hit?.star.id, 'NADIR_IX');
+
+    const miss = findNearestStarInField(0.02, 0.02, 'west', 0.05);
+    assert.equal(miss, null);
+  });
+
+  it('requires BOTH West and East anomaly plates before solving Nadir-IX triangulation', () => {
+    const normalRes = calculateParallaxIntersection('ALPHA_CYGNI', null, null);
+    assert.equal(normalRes.isImpossibleGeometry, false);
+    assert.equal(normalRes.angularDisplacementArcsec, 0);
+
+    const mockWestPlate: RecordedPlate = {
+      station: 'west',
+      starId: 'NADIR_IX',
+      starDesignation: 'The Wanderer',
+      timestamp: '02:18 ST',
+      focusSharpness: 0.96,
+      observedX: 0.498,
+      observedY: 0.368,
+      raObserved: '20h 48m 12.4s',
+      decObserved: '+42° 04′ 18.0″',
+      zenithAngleDeg: -2.15,
+      isAnomaly: true,
+    };
+
+    // Missing East plate -> cannot solve anomaly yet
+    const incompleteRes = calculateParallaxIntersection('NADIR_IX', mockWestPlate, null);
+    assert.equal(incompleteRes.canSolveAnomaly, false);
+    assert.equal(incompleteRes.isImpossibleGeometry, false);
+
+    const mockEastPlate: RecordedPlate = {
+      ...mockWestPlate,
+      station: 'east',
+      observedX: 0.582,
+      observedY: 0.352,
+      raObserved: '20h 59m 47.6s',
+      decObserved: '+42° 13′ 42.0″',
+      zenithAngleDeg: 2.15,
+    };
+
+    const solvedRes = calculateParallaxIntersection('NADIR_IX', mockWestPlate, mockEastPlate);
+    assert.equal(solvedRes.canSolveAnomaly, true);
+    assert.equal(solvedRes.isImpossibleGeometry, true);
+    assert.ok(solvedRes.angularDisplacementArcsec > 15000);
+  });
+
+  it('advances CosmicStage 1 -> 2 -> 3 -> 4 and progresses through Tutorial 01..10', () => {
+    const state = createInitialGameState(true);
+    assert.equal(deriveActiveTutorialStep(state, { isTelescopeOpen: false }), 'TUTORIAL_01');
+
+    state.hasMovedPlayer = true;
+    assert.equal(deriveActiveTutorialStep(state, { isTelescopeOpen: false }), 'TUTORIAL_02');
+    assert.equal(
+      deriveActiveTutorialStep(state, {
+        isTelescopeOpen: true,
+        selectedStarId: 'ALPHA_CYGNI',
+        isCentered: true,
+        isSharp: true,
+      }),
+      'TUTORIAL_03'
+    );
+    assert.equal(
+      deriveActiveTutorialStep(state, {
+        isTelescopeOpen: true,
+        selectedStarId: 'NADIR_IX',
+        isCentered: true,
+        isSharp: false,
+      }),
+      'TUTORIAL_04'
+    );
+    assert.equal(
+      deriveActiveTutorialStep(state, {
+        isTelescopeOpen: true,
+        selectedStarId: 'NADIR_IX',
+        isCentered: true,
+        isSharp: true,
+      }),
+      'TUTORIAL_05'
+    );
+
+    const westPlate: RecordedPlate = {
+      station: 'west',
+      starId: 'NADIR_IX',
+      starDesignation: 'OBJECT NADIR-IX',
+      timestamp: '02:15',
+      focusSharpness: 0.98,
+      observedX: 0.498,
+      observedY: 0.368,
+      raObserved: '20h 48m 12.4s',
+      decObserved: '+42° 04′ 18.0″',
+      zenithAngleDeg: -2.15,
+      isAnomaly: true,
+    };
+    state.recordedPlates.west = westPlate;
+    assert.equal(deriveActiveTutorialStep(state, { isTelescopeOpen: false }), 'TUTORIAL_06');
+
+    state.journalOpenedOnce = true;
+    assert.equal(deriveActiveTutorialStep(state, { isTelescopeOpen: false }), 'TUTORIAL_07');
+
+    state.scene = 'EAST_STATION';
+    assert.equal(deriveActiveTutorialStep(state, { isTelescopeOpen: false }), 'TUTORIAL_08');
+
+    const eastPlate: RecordedPlate = { ...westPlate, station: 'east', zenithAngleDeg: 2.15 };
+    state.recordedPlates.east = eastPlate;
+    assert.equal(deriveActiveTutorialStep(state, { isTelescopeOpen: false }), 'TUTORIAL_09');
+
+    state.scene = 'CHART_ROOM';
+    assert.equal(deriveActiveTutorialStep(state, { isTelescopeOpen: false }), 'TUTORIAL_10');
+
+    state.chartPuzzleSolved = true;
+    assert.equal(deriveActiveTutorialStep(state, { isTelescopeOpen: false }), 'COMPLETED');
+    assert.equal(
+      deriveCosmicStage({
+        inspectedStarIds: ['NADIR_IX'],
+        westPlate,
+        eastPlate,
+        chartPuzzleSolved: true,
+      }),
+      4
+    );
+  });
+
+  it('detects proximity to world hotspots and preserves save state across serialization', () => {
+    const nearWestScope = findNearbyHotspot('EXTERIOR_DECK', 0.24);
+    assert.equal(nearWestScope?.id, 'WEST_TELESCOPE');
+
+    const initial = createInitialGameState(true);
+    initial.cosmicStage = 3;
+    initial.playerX = 0.68;
+    initial.plumbLineInspected = true;
+
+    const raw = serializeGameState(initial);
+    const restored = deserializeGameState(raw, false);
+
+    assert.equal(restored.cosmicStage, 3);
+    assert.equal(restored.playerX, 0.68);
+    assert.equal(restored.plumbLineInspected, true);
+  });
 });

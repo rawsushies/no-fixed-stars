@@ -12,6 +12,7 @@ class SoundEngine {
   private volume = 0.65;
   private currentStage: CosmicStage = 1;
   private initialized = false;
+  private lastFootstepTime = 0;
 
   public initOnInteraction(): void {
     if (this.initialized) {
@@ -22,7 +23,9 @@ class SoundEngine {
     }
 
     try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtx) return;
 
       this.ctx = new AudioCtx();
@@ -108,10 +111,6 @@ class SoundEngine {
   private updateStageHarmonics(stage: CosmicStage): void {
     if (!this.ctx || !this.droneOsc1 || !this.droneOsc2 || !this.droneGain) return;
     const now = this.ctx.currentTime;
-    // Stage 1: Peaceful D1 + A1 fifth (73.42Hz, 110Hz)
-    // Stage 2: Suspended unsettling fourth (73.42Hz, 98.0Hz)
-    // Stage 3: Tritone beating (73.42Hz, 103.83Hz)
-    // Stage 4: Deep sub-audible abyssal dissonance (55Hz, 58.27Hz)
     const freqs: Record<CosmicStage, [number, number, number]> = {
       1: [73.42, 110.0, 0.10],
       2: [73.42, 97.99, 0.13],
@@ -153,6 +152,31 @@ class SoundEngine {
     this.masterGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.08);
   }
 
+  /** Stone flagstep / mountain gravel footstep synchronized with Dr. Vance walking */
+  public playFootstep(): void {
+    if (!this.initialized || !this.ctx || !this.masterGain || this.isMuted || this.isPaused) {
+      return;
+    }
+    const now = this.ctx.currentTime;
+    if (now - this.lastFootstepTime < 0.26) return;
+    this.lastFootstepTime = now;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const pitch = 95 + Math.random() * 28;
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(pitch, now);
+    osc.frequency.exponentialRampToValueAtTime(38, now + 0.055);
+
+    gain.gain.setValueAtTime(0.065, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(now);
+    osc.stop(now + 0.065);
+  }
+
   /** Mechanical brass vernier click (pitch-varied ±6%) */
   public playVernierTick(weight: 'light' | 'medium' = 'light'): void {
     this.initOnInteraction();
@@ -181,7 +205,6 @@ class SoundEngine {
     if (!this.ctx || !this.masterGain || this.isMuted || this.isPaused) return;
 
     const now = this.ctx.currentTime;
-    // Mechanical brass leaf-shutter double click
     [0, 0.14].forEach((offset, idx) => {
       if (!this.ctx || !this.masterGain) return;
       const osc = this.ctx.createOscillator();
@@ -199,7 +222,6 @@ class SoundEngine {
       osc.stop(now + offset + 0.07);
     });
 
-    // Subtle resonant glass harmonic
     const chime = this.ctx.createOscillator();
     const chimeGain = this.ctx.createGain();
     chime.type = 'sine';
@@ -221,7 +243,7 @@ class SoundEngine {
     if (!this.ctx || !this.masterGain || this.isMuted || this.isPaused) return;
 
     const now = this.ctx.currentTime;
-    const freqs = [55.0, 82.41, 116.54, 233.08]; // A1, E2, Bb2 (tritone), Bb3
+    const freqs = [55.0, 82.41, 116.54, 233.08];
     freqs.forEach((f) => {
       if (!this.ctx || !this.masterGain) return;
       const osc = this.ctx.createOscillator();

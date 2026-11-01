@@ -1,0 +1,1301 @@
+
+PROJECT: NO FIXED STARS
+MASTER MILESTONE 02 — THE LIVING WORLD
+
+VISUAL RECONSTRUCTION
+GENERATIVE MEDIA PRODUCTION
+ONLINE ASSET RESEARCH
+CHARACTER IMPLEMENTATION
+NARRATIVE & TUTORIAL REBUILD
+
+REPOSITORY:
+https://github.com/rawsushies/no-fixed-stars
+
+LIVE PREVIEW:
+https://no-fixed-stars.ai.studio/
+
+============================================================
+0. YOUR MISSION
+============================================================
+
+You are an independent game development studio.
+
+Your responsibilities include:
+
+- Creative Direction
+- Art Direction
+- Visual Research
+- Online Asset Discovery
+- 2D Environment Art
+- Character Design
+- Character Animation
+- Generative Image Production
+- Generative Video Production
+- Cinematic Direction
+- Technical Art
+- Gameplay Engineering
+- Narrative Design
+- Sound Design
+- UI/UX
+- Quality Assurance
+
+Your assignment is to transform NO FIXED STARS from its current visually primitive browser-game implementation into an atmospheric, visually exceptional, playable 2D cosmic horror adventure.
+
+This is an existing project.
+
+Do not create a new application.
+Do not discard working astronomical gameplay.
+Do not replace the project with a static visual mockup.
+
+The goal is to transform the actual existing game.
+
+ABSOLUTE PRIORITY:
+
+THE FINAL GAME MUST USE REAL ARTWORK.
+
+Use the full range of available resources:
+1. Nano Banana image generation.
+2. Gemini Omni video generation.
+3. Online visual research.
+4. Legally reusable online assets.
+5. Existing repository assets.
+6. Reference-based image editing.
+7. Generated character and environment animation.
+8. Original visual effects.
+
+Do not default to drawing everything procedurally using Canvas primitives.
+
+============================================================
+1. GAME IDENTITY
+============================================================
+
+TITLE:
+NO FIXED STARS
+
+TAGLINE:
+"A star should not move when you move."
+
+GENRE:
+Eldritch cosmic horror.
+Surreal exploration.
+Astronomical investigation.
+Atmospheric 2D narrative adventure.
+
+SETTING:
+
+Nadir Observatory.
+Nadir Plateau.
+Elevation 4,120 metres.
+October 28, 1926.
+
+The protagonist, Dr. E. Vance, arrives at an isolated astronomical research facility to replace its missing director, Julian Vane.
+
+The unfinished survey concerns an uncatalogued celestial object known as Nadir-IX.
+
+It exhibits impossible parallax.
+
+The player's investigation gradually reveals that the anomaly is not behaving like an astronomical object.
+
+Something is observing the observer.
+
+CREATIVE PRINCIPLE:
+
+The player must initially fall in love with the world.
+
+They must become attached to the astronomer exploring it.
+
+Then they must slowly discover that the beautiful night sky is something they were never meant to observe.
+
+============================================================
+2. VISUAL NORTH STAR
+============================================================
+
+NO FIXED STARS is a visual experience first, an atmospheric exploration game second, and a cosmic horror narrative third.
+
+The environment must look like a premium, illustrated indie game.
+
+ART DIRECTION:
+
+Painterly cosmic surrealism.
+
+Reference qualities:
+- Beautiful hand-painted landscape illustrations.
+- Atmospheric 2D indie-game environments.
+- Immense celestial skies.
+- Traditional gouache and oil-painting textures.
+- Organic cloud formations.
+- Cinematic landscape composition.
+- Deep atmospheric perspective.
+- Delicate environmental lighting.
+- Surreal astronomical phenomena.
+
+Original artwork is required.
+
+Do not reproduce copyrighted game artwork.
+
+COLOR LANGUAGE:
+
+Primary:
+- Midnight navy.
+- Deep indigo.
+- Charcoal.
+- Muted blue-grey.
+- Moonlit silver.
+
+Secondary:
+- Antique amber.
+- Muted brass.
+- Desaturated violet.
+- Pale atmospheric blue.
+
+Supernatural:
+- Pale verdigris.
+- Unnatural violet.
+- Cold white.
+- Muted celestial amber.
+
+Avoid excessive purple neon.
+
+Avoid:
+- 2013 live-wallpaper aesthetics.
+- Basic random star backgrounds.
+- Canva-style geometric mountains.
+- Primitive rectangle-based architecture.
+- Flat vector cartoon art.
+- Generic pixel art.
+- Generic purple space wallpapers.
+- Repetitive glitch effects.
+- Obvious monsters and giant eyeballs.
+
+VISUAL COMPOSITION:
+
+Approximately 70–80% of the exterior composition should be sky.
+
+The observatory and protagonist occupy the foreground.
+
+The environment must communicate an immense sense of scale.
+
+Every major visual object should look intentionally designed.
+
+============================================================
+3. PHASE ONE — RESEARCH EXISTING VISUAL ASSETS
+============================================================
+
+Do not begin by generating every asset from scratch.
+
+First investigate available visual resources.
+
+Use image search, website research, asset catalogs and the existing project files.
+
+RESEARCH TARGETS:
+
+A. Existing 2D game backgrounds:
+- Atmospheric night landscapes.
+- Painted mountains.
+- Layered clouds.
+- Cosmic skies.
+- Observatory illustrations.
+- Victorian architectural environments.
+
+B. Character resources:
+- Historically appropriate astronomers.
+- Side-view walking sprites.
+- Idle character animation references.
+- Character interaction poses.
+
+C. Props:
+- Brass astronomical telescopes.
+- Victorian instruments.
+- Scientific equipment.
+- Lanterns.
+- Vintage documents.
+- Photographic glass plates.
+
+D. Environmental textures:
+- Mountain rock.
+- Fog.
+- Clouds.
+- Stone masonry.
+- Aged paper.
+- Atmospheric surfaces.
+
+RECOMMENDED ONLINE ASSET LIBRARIES:
+
+1. OpenGameArt:
+https://opengameart.org/
+
+Prioritize:
+https://opengameart.org/content/cc0-backgrounds
+https://opengameart.org/content/seamless-2d-skies
+https://opengameart.org/content/seamless-sky-backgrounds
+
+2. Kenney:
+https://kenney.nl/assets
+
+License information:
+https://kenney.nl/support
+
+3. Poly Haven:
+https://polyhaven.com/
+
+License information:
+https://polyhaven.com/license
+
+4. Wikimedia Commons:
+https://commons.wikimedia.org/
+
+Reuse guidance:
+https://commons.wikimedia.org/wiki/Commons:REUSE
+
+5. itch.io asset marketplace:
+https://itch.io/game-assets
+
+Only use assets with explicit licenses permitting the intended use.
+
+LICENSING POLICY:
+
+Preferred:
+- CC0.
+- Public domain.
+- Explicit commercial-use licenses.
+- CC-BY with complete attribution and license compliance.
+
+Avoid:
+- NC restrictions.
+- ND restrictions.
+- Unclear ownership.
+- Missing license information.
+- Unlicensed images.
+- Assets whose use requires permission that has not been obtained.
+
+Avoid ShareAlike assets unless their redistribution and derivative licensing implications have been reviewed and explicitly accepted.
+
+Never assume an entire website has one universal asset license.
+
+Verify the license of every individual asset.
+
+Do not use:
+- Steam screenshots as game artwork.
+- Existing commercial-game backgrounds.
+- Pinterest images without verified rights.
+- ArtStation portfolio artwork without permission.
+- Copyrighted character sprites.
+- Watermarked stock imagery.
+- Random Google Images downloads.
+
+Images from copyrighted games may be used as visual research references only, not incorporated into the distributed game without permission.
+
+ONLINE SEARCH OBJECTIVE:
+
+Discover potentially useful assets.
+
+Inspect their quality.
+
+Verify licensing.
+
+Download appropriate files.
+
+Place reusable assets locally in the project.
+
+Record original source URLs, creator, license and attribution.
+
+If direct downloading is unavailable in the current environment, do not invent downloaded files or use remote hotlinks as substitutes.
+
+Use available image-generation capabilities for the missing artwork and document assets that require manual import.
+
+============================================================
+4. PHASE TWO — AUDIT EXISTING PROJECT ASSETS
+============================================================
+
+Inspect the entire existing asset directory.
+
+Current known location:
+
+src/assets/images/
+
+Existing files include:
+- chart_room_desk_*.jpg
+- plate_1894_eclipse_*.jpg
+- plate_1924_vane_*.jpg
+
+Inspect each asset.
+
+Determine:
+- Whether it matches the new direction.
+- Whether it can be reused.
+- Whether it should be edited.
+- Whether a replacement should be generated.
+
+Preserve usable historical plates and research imagery.
+
+Do not blindly delete existing assets.
+
+Create a unified asset inventory.
+
+============================================================
+5. PHASE THREE — GENERATIVE IMAGE PRODUCTION
+============================================================
+
+Use the highest-quality image-generation capability available in Google AI Studio.
+
+Preferred workflow:
+- Nano Banana Pro for key artwork and detailed image production.
+- Nano Banana 2.1 for efficient iterations and consistent image editing.
+- Use the current available stable image model if these options are not exposed.
+
+Do not hard-code obsolete preview model identifiers.
+
+Generate ORIGINAL game artwork.
+
+IMPORTANT:
+Do not ask the image model to produce all locations independently without an artistic reference.
+
+First create the MASTER ART DIRECTION IMAGE.
+
+MASTER IMAGE REQUIREMENTS:
+
+Aspect ratio: 21:9.
+
+A remote Victorian astronomical observatory on a mountain plateau under an enormous atmospheric night sky.
+
+The environment contains:
+- Deep midnight celestial sky.
+- Complex organic clouds.
+- Beautiful distant mountains.
+- Ancient stone observatory.
+- Large rotating astronomical dome.
+- Visible brass equatorial telescope.
+- Warm amber windows.
+- Stone observation terrace.
+- Atmospheric fog.
+- Delicate stars and unusual celestial objects.
+
+The image must look like a premium hand-painted 2D illustrated game environment.
+
+No text.
+No typography.
+No UI.
+No logo.
+No watermark.
+
+Use this master image as the reference for the entire visual production pipeline.
+
+Generate a visual style sheet that establishes:
+- Color palette.
+- Texture language.
+- Atmospheric lighting.
+- Architecture.
+- Character proportions.
+- Environment composition.
+
+All subsequent assets must follow the same artistic identity.
+
+============================================================
+6. IMAGE ASSET PRODUCTION LIST
+============================================================
+
+Prioritize assets that directly improve the first playable release.
+
+A. MAIN ENVIRONMENT
+
+Generate:
+
+1. Panoramic observatory exterior.
+2. Deep-space sky background.
+3. Independent nebula layer.
+4. Independent upper-cloud layer.
+5. Independent foreground-cloud layer.
+6. Distant mountain layer.
+7. Middle mountain layer.
+8. Foreground mountain ridge.
+9. Walkable stone observation deck.
+10. Detailed observatory architecture.
+11. Rotating observatory dome.
+12. Telescope platform and railing.
+13. Lantern and architectural lighting elements.
+
+B. LOCATION ARTWORK
+
+Generate:
+
+14. West Observation Deck.
+15. East Cliffside Pier.
+16. Ridge walkway.
+17. Observatory Chart Room.
+18. Telescope interior / observation station.
+19. Darkroom and archive.
+20. Lower observatory chamber.
+
+Maintain spatial and architectural consistency.
+
+The East Pier and West Pier should visibly belong to the same facility.
+
+C. PROTAGONIST
+
+Generate Dr. E. Vance.
+
+Character concept:
+- Adult astronomer from 1926.
+- Long weathered wool coat.
+- Scarf.
+- Brass-frame spectacles.
+- Field satchel.
+- Lantern.
+- Practical mountain footwear.
+
+Generate:
+
+21. Full character reference sheet.
+22. Front view.
+23. Side view.
+24. Back view.
+25. Three-quarter view.
+26. Facial expressions.
+27. Idle animation frames.
+28. Walking animation frames.
+29. Telescope interaction frames.
+30. Journal-reading frames.
+31. Lantern-holding frames.
+32. Cosmic-revelation reaction frames.
+
+Generate an aligned transparent 2D character sprite sheet.
+
+Prefer:
+- 8 walking frames.
+- 4 idle frames.
+- 4 interaction frames.
+- 2 reaction frames.
+
+If the generator cannot maintain consistency across a full sprite sheet, generate separate frames using the master character reference and assemble them into aligned sprite sheets.
+
+Do not use a generic geometric silhouette.
+
+D. INTERACTIVE PROPS
+
+Generate:
+
+33. Brass equatorial telescope.
+34. Telescope eyepiece.
+35. Telescope calibration mechanism.
+36. Meridian plumb-line.
+37. Brass theodolite.
+38. Vintage scientific instruments.
+39. Lantern.
+40. Field journal.
+41. Scientific glass plates.
+42. Wooden research desk.
+43. Archive equipment.
+44. Dome machinery.
+45. Stone doors and switches.
+
+Use isolated transparent assets where possible.
+
+E. CELESTIAL ART
+
+Generate:
+
+46. Normal celestial sky.
+47. Nadir-IX anomaly.
+48. Strange constellation.
+49. Missing-star phenomenon.
+50. Distorted nebula.
+51. Enormous partially obscured cosmic silhouette.
+52. Double-ring aperture.
+53. Impossible celestial geometry.
+54. Final cosmic revelation.
+
+F. JOURNAL AND DOCUMENTS
+
+Generate:
+- Aged paper.
+- Journal cover.
+- Historical photographic plates.
+- Scientific diagram textures.
+- Archival illustrations.
+- Astronomical chart backgrounds.
+
+All readable labels, dates and coordinates must be implemented in the application, not baked into generated illustrations.
+
+============================================================
+7. REFERENCE-BASED ARTWORK REFINEMENT
+============================================================
+
+After each important image generation:
+
+1. Inspect the actual output.
+2. Compare it with the master reference.
+3. Identify inconsistencies.
+4. Use image editing to correct them.
+5. Regenerate unsatisfactory outputs.
+6. Save only approved assets.
+
+For environments, preserve:
+- Camera perspective.
+- Light direction.
+- Architectural materials.
+- Mountain geometry.
+- Sky composition.
+- Environmental scale.
+
+For Dr. Vance, preserve:
+- Face.
+- Clothing.
+- Accessories.
+- Body proportions.
+- Silhouette.
+- Color palette.
+
+Do not accept an attractive image that cannot be integrated into the game.
+
+============================================================
+8. PHASE FOUR — GENERATIVE VIDEO PRODUCTION
+============================================================
+
+Use Gemini Omni 1.1 Flash through Google AI Studio's available video-generation capability.
+
+Current documented model identifier:
+gemini-omni-1.1-flash
+
+Use its image-to-video, video editing, scene extension and keyframe interpolation capabilities wherever useful.
+
+Generate the following original clips.
+
+VIDEO A — OPENING CINEMATIC
+
+Duration: 6–10 seconds.
+
+Use the master observatory artwork as the image reference.
+
+Scene:
+A tiny observatory stands on an isolated mountain beneath an enormous night sky.
+
+Camera:
+Slow cinematic push toward the observatory.
+
+Movement:
+Clouds drift.
+Mountain fog moves subtly.
+Stars shimmer.
+Amber windows glow.
+
+No camera cuts.
+
+VIDEO B — LIVING NIGHT SKY
+
+Duration: 6–10 seconds.
+
+Use the master sky artwork as reference.
+
+Scene:
+A beautiful uninterrupted astronomical night.
+
+Movement:
+Organic cloud formations.
+Subtle nebula movement.
+Delicate individual celestial activity.
+
+Camera remains locked.
+
+Generate the clip for an atmospheric title or environmental sequence.
+
+VIDEO C — OBSERVATORY ATMOSPHERE
+
+Duration: 6–10 seconds.
+
+Scene:
+A closer view of the observatory.
+
+Movement:
+Lantern flicker.
+Wind-driven fog.
+Slow cloud movement.
+Subtle environmental motion.
+
+VIDEO D — FIRST ANOMALY
+
+Duration: 5–8 seconds.
+
+Scene:
+The anomalous star Nadir-IX appears within a familiar constellation.
+
+Movement:
+Surrounding stars subtly drift.
+Nadir-IX remains unnaturally fixed.
+
+VIDEO E — COSMIC DISTORTION
+
+Duration: 6–10 seconds.
+
+Scene:
+Clouds slowly reveal a huge, incomprehensible silhouette.
+
+Movement:
+Subtle spatial distortions.
+Unnatural atmospheric movement.
+No identifiable creature.
+
+VIDEO F — FINAL REVELATION
+
+Duration: 6–10 seconds.
+
+Scene:
+The ordinary night sky transforms into an impossible astronomical structure.
+
+Movement:
+Celestial geometry changes.
+Clouds move against their expected direction.
+A vast aperture becomes visible.
+
+VIDEO G — CHARACTER ANIMATION REFERENCES
+
+Use the character reference to create short clips:
+- Idle in mountain wind.
+- Walking horizontally.
+- Holding lantern.
+- Looking through telescope.
+- Writing in journal.
+
+These are references for actual game animation.
+
+Generate consistent animation references, then create local character sprite assets from suitable frames.
+
+Do not use a full video as a substitute for the playable character.
+
+VIDEO INTEGRATION RULES:
+
+Use actual generated video files in:
+- Opening cinematic.
+- Narrative transitions.
+- Cosmic reveal sequences.
+- Short atmospheric interludes.
+
+Use still generated layers for continuous interactive gameplay.
+
+Do not place a non-interactive full-screen video over the entire playable world.
+
+Do not assume every generated clip loops seamlessly.
+
+Use video poster images, crossfades and static fallbacks.
+
+Optimize all clips for web delivery.
+
+Do not generate an excessive number of redundant clips.
+
+Prioritize the quality and integration of the six main cinematics before producing optional extras.
+
+============================================================
+9. PHASE FIVE — ACTUAL ASSET INTEGRATION
+============================================================
+
+Create:
+
+src/assets/generated/images/
+    art-direction/
+    environments/
+    environment-layers/
+    characters/
+    sprites/
+    props/
+    celestial/
+    documents/
+    interface/
+
+src/assets/generated/video/
+    opening/
+    atmosphere/
+    anomalies/
+    revelations/
+    character-references/
+    transitions/
+
+Create:
+
+ASSET_MANIFEST.md
+CREDITS.md
+ART_DIRECTION.md
+
+ASSET_MANIFEST.md must record:
+- Filename.
+- Asset category.
+- Source type: Generated / Online / Existing.
+- Generation model where applicable.
+- Original source URL.
+- License.
+- Creator.
+- Intended scene.
+- Import status.
+- Integration status.
+
+Use local project imports.
+
+Never rely on unstable external image URLs.
+
+Do not leave downloaded assets in temporary folders.
+
+Do not reference missing files.
+
+Do not report generated assets as completed until actual files exist.
+
+============================================================
+10. PHASE SIX — REBUILD LIVING SKY
+============================================================
+
+Refactor the existing:
+
+src/components/LivingSkyCanvas.tsx
+
+The current implementation uses:
+- Procedural gradients.
+- Hundreds of random star points.
+- Elliptical cloud shapes.
+- Sine-wave mountain outlines.
+- Rectangular and circular architectural primitives.
+
+These may remain as supplementary effects.
+
+They must NOT remain the primary environmental artwork.
+
+Use actual generated paintings as the foundation.
+
+COMPOSITING ORDER:
+
+1. Painted background sky.
+2. Nebula formations.
+3. Background celestial objects.
+4. Distant cloud layers.
+5. Distant mountain artwork.
+6. Middle mountain artwork.
+7. Foreground cloud and fog layers.
+8. Observatory architecture.
+9. Walkable terrain.
+10. Foreground equipment and props.
+11. Dr. Vance sprite.
+12. Dynamic celestial effects.
+
+Add independent parallax to appropriate layers.
+
+Maintain the giant-sky composition.
+
+Do not distort artwork by simply stretching unrelated images across the viewport.
+
+Use carefully composed and registered asset layers.
+
+The scene must look beautiful even when all particles and dynamic effects are disabled.
+
+============================================================
+11. PHASE SEVEN — THE PLAYABLE PROTAGONIST
+============================================================
+
+Introduce Dr. E. Vance as the physical player character.
+
+This is a 2D side-view exploration adventure, not a platformer.
+
+The protagonist must physically exist in the environment.
+
+Controls:
+
+A / D or arrow keys:
+Move horizontally.
+
+E:
+Interact.
+
+J:
+Open journal.
+
+Escape:
+Pause.
+
+Mouse:
+Inspect objects and operate interfaces.
+
+Implement:
+- Sprite animations.
+- Idle state.
+- Walking state.
+- Interaction state.
+- Character facing.
+- Movement boundaries.
+- Collision with environmental geometry.
+- Camera following.
+- Contextual interaction prompts.
+- Scene transitions.
+
+Character scale should remain relatively small compared with the astronomical scenery.
+
+The player should be able to walk across the observation deck and approach the telescope.
+
+The telescope must be visually present as an actual environment object.
+
+Do not replace physical navigation with a row of generic buttons.
+
+============================================================
+12. PHASE EIGHT — STORY INTRODUCTION
+============================================================
+
+Replace the immediate transition from title screen to gameplay.
+
+Create a cinematic prologue.
+
+OPENING:
+
+Play the generated opening cinematic.
+
+Display:
+
+NO FIXED STARS
+
+"A star should not move when you move."
+
+Buttons:
+- Begin Observation.
+- Continue Survey.
+- Settings.
+
+PROLOGUE:
+
+OCTOBER 28, 1926.
+
+NADIR PLATEAU.
+ELEVATION 4,120 METRES.
+
+Use generated environment artwork with cinematic transitions.
+
+Narrative:
+
+"Director Julian Vane has failed to transmit his astronomical observations for fourteen consecutive days."
+
+"You have been assigned to complete his unfinished survey at Nadir Observatory."
+
+"His final recorded instruction was simple."
+
+"Observe the object from both ends of the baseline."
+
+"Do not triangulate Nadir-IX."
+
+The introduction must be skippable.
+
+Do not remove essential narrative context when skipped.
+
+============================================================
+13. PHASE NINE — TUTORIAL AND OBJECTIVE GUIDANCE
+============================================================
+
+The current game does not sufficiently explain what the player must do.
+
+Fix this completely.
+
+Implement progressive onboarding.
+
+TUTORIAL 01:
+"Use A / D or arrow keys to walk."
+
+TUTORIAL 02:
+"Approach the brass telescope and press E."
+
+TUTORIAL 03:
+"Select a celestial object within the telescope field."
+
+TUTORIAL 04:
+"Adjust the focus until the target is sharp."
+
+TUTORIAL 05:
+"Record your first photographic plate."
+
+TUTORIAL 06:
+"Open your journal to review the observation."
+
+TUTORIAL 07:
+"Walk to the East Cliffside Pier."
+
+TUTORIAL 08:
+"Observe Nadir-IX from the second baseline."
+
+TUTORIAL 09:
+"Enter the Chart Room."
+
+TUTORIAL 10:
+"Overlay both plates and calculate the anomaly."
+
+Each instruction must:
+- Appear contextually.
+- Highlight the correct object.
+- Display the correct control.
+- Explain only one action at a time.
+- Be dismissible when appropriate.
+- Be revisitable from the journal.
+- Persist completion.
+
+Create a persistent current-objective indicator.
+
+Example:
+
+CURRENT INVESTIGATION
+
+"Record Nadir-IX from the West Pier telescope."
+
+After completion, update the objective automatically.
+
+Add subtle proximity prompts.
+
+Never make players guess basic controls or randomly click the screen to discover their objectives.
+
+============================================================
+14. PHASE TEN — GAMEPLAY INTEGRITY
+============================================================
+
+Preserve the existing astronomy systems.
+
+Maintain:
+- CATALOG_STARS.
+- Nadir-IX.
+- West and East observation stations.
+- Telescope interface.
+- Focus mechanics.
+- Photographic plate recording.
+- Chart Room.
+- Blink comparator.
+- Parallax calculation.
+- Cosmic stage progression.
+- Field journal.
+- Local save system.
+
+Repair existing shortcuts:
+
+1. Require both valid anomaly plates before final triangulation.
+
+2. Remove automatic perfect centering during exposure.
+
+3. Remove automatic perfect focus during exposure.
+
+4. Validate the actual target position and optical focus.
+
+5. Make recording a deliberate player action.
+
+6. Use actual recorded values in the chart calculation.
+
+7. Provide hints when the player is struggling.
+
+8. Update the journal and objective system when progress occurs.
+
+9. Preserve existing save data through migration.
+
+Do not replace Impossible Parallax with unrelated generic horror gameplay.
+
+============================================================
+15. PHASE ELEVEN — COSMIC HORROR TRANSFORMATION
+============================================================
+
+Maintain four visual stages.
+
+STAGE I — FAMILIARITY
+
+A beautiful astronomical night.
+
+STAGE II — ANOMALY
+
+Nadir-IX behaves incorrectly.
+
+STAGE III — DISTORTION
+
+The environment begins contradicting ordinary spatial expectations.
+
+STAGE IV — REVELATION
+
+The player discovers something incomprehensibly vast.
+
+Use:
+- Generated celestial overlays.
+- Generated environment edits.
+- Video-based narrative sequences.
+- Layered cloud transformations.
+- Dynamic artwork compositing.
+- Carefully timed sound design.
+
+Do not simply change the sky gradient color.
+
+Preserve visual beauty even as the world becomes horrifying.
+
+The entity must remain mostly unseen.
+
+============================================================
+16. PHASE TWELVE — INTERFACE
+============================================================
+
+Redesign the interface around the illustrated world.
+
+The game must not look like a web dashboard.
+
+Use:
+- Elegant serif title typography.
+- Scientific monospaced labels.
+- Contextual interaction hints.
+- Small objective indicator.
+- Minimal journal control.
+- Restrained audio and pause controls.
+- Atmospheric narrative overlays.
+
+Remove the existing oversized permanent button dock.
+
+Interactions must be positioned within the actual environment.
+
+Preserve usability and accessibility.
+
+============================================================
+17. PHASE THIRTEEN — AUDIO
+============================================================
+
+Retain the existing sound engine.
+
+Improve the atmosphere with:
+- Mountain wind.
+- Distant atmospheric ambience.
+- Stone footsteps.
+- Brass instrument movements.
+- Telescope adjustment sounds.
+- Lantern handling.
+- Paper and journal sounds.
+- Subtle cosmic drones.
+- Distorted ambient tones.
+- Deliberate silence.
+
+Use generated audio where available and useful.
+
+Avoid repetitive arcade sound effects.
+
+Separate video audio from the game's soundtrack where necessary.
+
+============================================================
+18. PHASE FOURTEEN — PERFORMANCE
+============================================================
+
+This is a browser game.
+
+Maintain:
+- React.
+- TypeScript.
+- Vite.
+- Canvas 2D.
+- CSS.
+- Web Audio API.
+- localStorage.
+
+Use generated assets locally.
+
+Optimize image and video size.
+
+Use appropriate WebP or AVIF images where supported.
+
+Use optimized video encoding.
+
+Preload the title sequence and first environment.
+
+Lazy-load nonessential chapters and document assets.
+
+Avoid unnecessary video decoding.
+
+Avoid expensive full-screen blur.
+
+Use efficient Canvas compositing.
+
+Use appropriate device pixel ratios.
+
+Desktop is the primary visual target.
+
+Mobile must remain functional.
+
+Provide static image fallbacks.
+
+The deployed game must not need image or video generation every time a user opens it.
+
+All generative production occurs during development.
+
+============================================================
+19. PHASE FIFTEEN — ASSET AND GENERATION AUDIT
+============================================================
+
+Maintain a strict production ledger.
+
+For each asset, record:
+
+- Researched.
+- License verified, if sourced online.
+- Generation completed, if generated.
+- File received.
+- Quality inspected.
+- Saved locally.
+- Imported.
+- Integrated.
+- Tested.
+
+Distinguish clearly between:
+
+GENERATED ASSET
+ONLINE-SOURCED ASSET
+EXISTING PROJECT ASSET
+
+Never falsely claim an asset was generated or downloaded.
+
+If generation limits are reached, preserve existing progress.
+
+Prioritize:
+
+1. Master environment artwork.
+2. Layered exterior.
+3. Protagonist.
+4. Observatory architecture.
+5. Telescope and props.
+6. Opening cinematic.
+7. Anomaly and revelation videos.
+8. Supporting locations.
+9. Remaining decorative assets.
+
+If a tool is unavailable, document the limitation and continue with available resources without fabricating results.
+
+============================================================
+20. PHASE SIXTEEN — QUALITY ASSURANCE
+============================================================
+
+Inspect the actual live game at desktop resolution.
+
+Compare the result against the approved art direction.
+
+VISUAL ACCEPTANCE:
+
+- The environment is genuinely painterly.
+- The sky has artistic complexity.
+- Clouds are organically illustrated.
+- Mountains are detailed.
+- Observatory architecture is recognizable.
+- The protagonist is visually appealing and animated.
+- The world has convincing depth.
+- Generated videos are actually used.
+- Supernatural transformations look deliberate.
+- No major environment relies on primitive placeholder shapes.
+
+GAMEPLAY ACCEPTANCE:
+
+- Prologue works.
+- Movement works.
+- Character interactions work.
+- Tutorial works.
+- Objective guidance works.
+- Telescope works.
+- Both observation stations work.
+- Chart puzzle requires both plates.
+- Cosmic transformation works.
+- Journal works.
+- Save/load works.
+
+TECHNICAL ACCEPTANCE:
+
+- Production build passes.
+- TypeScript checks pass.
+- Tests pass.
+- Assets load correctly.
+- Videos load correctly.
+- No fatal runtime errors.
+- No broken navigation.
+- No missing files.
+- No stuck loading screens.
+
+Do not judge visual quality from code alone.
+
+The rendered result is the ultimate acceptance test.
+
+============================================================
+21. EXECUTION ORDER
+============================================================
+
+Follow this production sequence:
+
+PHASE A:
+Inspect the existing project and asset directory.
+
+PHASE B:
+Research online reference material and legally reusable assets.
+
+PHASE C:
+Create the master art direction reference.
+
+PHASE D:
+Generate the main environment and protagonist artwork.
+
+PHASE E:
+Generate separate environment layers, locations and props.
+
+PHASE F:
+Generate the opening, atmospheric and cosmic horror videos.
+
+PHASE G:
+Integrate all generated and sourced assets locally.
+
+PHASE H:
+Rebuild the Living Sky environment.
+
+PHASE I:
+Introduce Dr. Vance and character movement.
+
+PHASE J:
+Implement the prologue, tutorial and objectives.
+
+PHASE K:
+Repair the existing astronomical progression.
+
+PHASE L:
+Integrate video sequences and audio.
+
+PHASE M:
+Run the application and inspect the visual result.
+
+PHASE N:
+Fix visual, gameplay and technical problems.
+
+PHASE O:
+Commit the completed milestone to GitHub.
+
+Do not spend the entire development effort on writing plans.
+
+Actually perform the production work.
+
+Do not skip media generation.
+
+Do not substitute code-generated artwork for available image generation.
+
+Do not report completion when generated files are missing.
+
+Do not discard working project features.
+
+============================================================
+FINAL CREATIVE DIRECTIVE
+============================================================
+
+NO FIXED STARS must become a visually memorable indie game.
+
+The opening should make players stop and look.
+
+The sky should feel almost impossibly beautiful.
+
+The observatory should look like a real place.
+
+The astronomer should feel like someone the player inhabits.
+
+The gameplay should make investigation meaningful.
+
+The cosmic horror should gradually contaminate the beauty of the world.
+
+Use generated images, generated videos, researched visual references, reusable assets and the existing project resources as extensively as available tools and licenses allow.
+
+GENERATE REAL ARTWORK.
+
+SOURCE REAL REUSABLE ASSETS.
+
+PRODUCE REAL CINEMATIC VIDEO.
+
+INTEGRATE EVERYTHING INTO THE ACTUAL GAME.
+
+BUILD A PLAYABLE EXPERIENCE.
+
+NO MORE PROCEDURAL LIVE-WALLPAPER PRESENTATION.
+
+EXECUTE THE COMPLETE MILESTONE.

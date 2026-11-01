@@ -3,6 +3,7 @@ import {
   CATALOG_STARS,
   getObservedStarPosition,
   calculateParallaxIntersection,
+  hasBothAnomalyPlates,
   type RecordedPlate,
   type ParallaxCalculationResult,
 } from '../game/astronomyLogic';
@@ -36,8 +37,7 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
     );
   const [bgImgError, setBgImgError] = useState(false);
 
-  const bothAnomalyPlatesRecorded =
-    westPlate?.isAnomaly === true && eastPlate?.isAnomaly === true;
+  const bothAnomalyPlatesRecorded = hasBothAnomalyPlates(westPlate, eastPlate);
 
   const handleSelectStarOnChart = (starId: string) => {
     soundEngine.playVernierTick('light');
@@ -50,11 +50,12 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
 
   const handlePlotAndCalculate = () => {
     soundEngine.playVernierTick('medium');
-    setSightlinesPlotted(true);
     const res = calculateParallaxIntersection(selectedStarId, westPlate, eastPlate);
     setCalculationResult(res);
+    setSightlinesPlotted(res.intersectionValid);
 
-    if (res.isImpossibleGeometry) {
+    // Strictly require BOTH West and East anomaly plates before solving the final triangulation!
+    if (res.canSolveAnomaly && res.isImpossibleGeometry) {
       soundEngine.playAnomalyRevelation();
       onSolveChartPuzzle();
     }
@@ -99,6 +100,7 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
           <div className="flex items-center gap-2.5">
             <button
               type="button"
+              data-testid="return-to-deck-btn"
               onClick={onReturnToDeck}
               className="px-4 py-2 text-xs font-mono-tabular bg-[#131e36] hover:bg-[#1c2c4d] text-[#f3e5ab] border border-[#d4a359]/45 rounded transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
@@ -109,14 +111,17 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
 
         {/* Missing Plates Prompt if Player Entered Early */}
         {!bothAnomalyPlatesRecorded && (
-          <div className="p-4 rounded-lg bg-[#12192b]/95 border border-amber-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div
+            data-testid="missing-plates-warning"
+            className="p-4 rounded-lg bg-[#12192b]/95 border border-amber-500/45 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+          >
             <div className="space-y-1">
               <div className="text-xs font-mono-tabular uppercase tracking-wider text-amber-300">
                 ▲ Dual-Baseline Plates Required for Full Triangulation
               </div>
               <p className="text-xs text-[#cbd5e1]">
                 To complete a rigorous baseline triangulation of{' '}
-                <strong className="text-[#f3e5ab]">Object Nadir-IX (The Wanderer)</strong>, record focused glass plates from both the West Pier (−250m) and East Pier (+250m).
+                <strong className="text-[#f3e5ab]">Object Nadir-IX (The Wanderer)</strong>, you must first record focused glass plates from both the West Pier (−250 m) and East Pier (+250 m).
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -126,7 +131,7 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
                   onClick={() => onOpenTelescopeStation('west')}
                   className="px-3 py-1.5 text-xs font-mono-tabular bg-[#d4a359] text-[#050811] font-medium rounded whitespace-nowrap shrink-0 cursor-pointer"
                 >
-                  Observe at West Pier
+                  Go to West Pier (−250 m)
                 </button>
               )}
               {!eastPlate?.isAnomaly && (
@@ -135,7 +140,7 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
                   onClick={() => onOpenTelescopeStation('east')}
                   className="px-3 py-1.5 text-xs font-mono-tabular bg-[#d4a359] text-[#050811] font-medium rounded whitespace-nowrap shrink-0 cursor-pointer"
                 >
-                  Observe at East Pier
+                  Go to East Pier (+250 m)
                 </button>
               )}
             </div>
@@ -167,7 +172,7 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
                       soundEngine.playVernierTick('light');
                       setPlateMode(tab.id);
                     }}
-                    className={`px-2.5 py-1 text-xs font-mono-tabular rounded transition-colors whitespace-nowrap shrink-0 ${
+                    className={`px-2.5 py-1 text-xs font-mono-tabular rounded transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                       plateMode === tab.id
                         ? 'bg-[#d4a359] text-[#050811] font-medium'
                         : 'text-[#94a3b8] hover:text-white'
@@ -187,7 +192,6 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
                 role="img"
                 aria-label="Astrometric Blink Comparator Star Chart"
               >
-                {/* Coordinate Grid */}
                 <defs>
                   <pattern
                     id="chart-grid"
@@ -205,22 +209,23 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
                 </defs>
                 <rect width="800" height="500" fill="url(#chart-grid)" />
 
-                {/* Constellation Reference Lines */}
                 <g stroke="rgba(148, 163, 184, 0.18)" strokeWidth="1" strokeDasharray="3 3">
                   <line x1={0.28 * 800} y1={0.34 * 500} x2={0.39 * 800} y2={0.46 * 500} />
                   <line x1={0.39 * 800} y1={0.46 * 500} x2={0.27 * 800} y2={0.55 * 500} />
                   <line x1={0.39 * 800} y1={0.46 * 500} x2={0.49 * 800} y2={0.59 * 500} />
                 </g>
 
-                {/* Render Catalog Stars on the Plate */}
                 {CATALOG_STARS.map((star) => {
                   const westPos = getObservedStarPosition(star, 'west');
                   const eastPos = getObservedStarPosition(star, 'east');
-                  const wx = westPos.x * 800;
-                  const wy = westPos.y * 500;
-                  const ex = eastPos.x * 800;
-                  const ey = eastPos.y * 500;
+                  const wx = (star.isAnomaly && westPlate?.isAnomaly ? westPlate.observedX : westPos.x) * 800;
+                  const wy = (star.isAnomaly && westPlate?.isAnomaly ? westPlate.observedY : westPos.y) * 500;
+                  const ex = (star.isAnomaly && eastPlate?.isAnomaly ? eastPlate.observedX : eastPos.x) * 800;
+                  const ey = (star.isAnomaly && eastPlate?.isAnomaly ? eastPlate.observedY : eastPos.y) * 500;
                   const isSelected = star.id === selectedStarId;
+
+                  const showWestAnomaly = !star.isAnomaly || westPlate?.isAnomaly === true;
+                  const showEastAnomaly = !star.isAnomaly || eastPlate?.isAnomaly === true;
 
                   return (
                     <g
@@ -228,8 +233,7 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
                       onClick={() => handleSelectStarOnChart(star.id)}
                       className="cursor-pointer"
                     >
-                      {/* Displacement Vector for Anomaly in Overlay Mode */}
-                      {star.isAnomaly && plateMode === 'overlay' && (
+                      {star.isAnomaly && plateMode === 'overlay' && bothAnomalyPlatesRecorded && (
                         <>
                           <line
                             x1={wx}
@@ -263,8 +267,7 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
                         </>
                       )}
 
-                      {/* West Plate Position (Cyan/Silver) */}
-                      {(plateMode === 'overlay' || plateMode === 'west') && (
+                      {(plateMode === 'overlay' || plateMode === 'west') && showWestAnomaly && (
                         <g>
                           <circle
                             cx={wx}
@@ -282,14 +285,13 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
                               fontSize="10"
                               fontFamily="JetBrains Mono, monospace"
                             >
-                              W-09 (−2.15°)
+                              W-09 ({westPlate?.zenithAngleDeg ?? -2.15}°)
                             </text>
                           )}
                         </g>
                       )}
 
-                      {/* East Plate Position (Amber/Violet) */}
-                      {(plateMode === 'overlay' || plateMode === 'east') && (
+                      {(plateMode === 'overlay' || plateMode === 'east') && showEastAnomaly && (
                         <g>
                           <circle
                             cx={ex}
@@ -307,13 +309,12 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
                               fontSize="10"
                               fontFamily="JetBrains Mono, monospace"
                             >
-                              E-09 (+2.15°)
+                              E-09 (+{eastPlate?.zenithAngleDeg ?? 2.15}°)
                             </text>
                           )}
                         </g>
                       )}
 
-                      {/* Selection Ring */}
                       {isSelected && (
                         <circle
                           cx={plateMode === 'east' ? ex : wx}
@@ -348,8 +349,12 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
             {/* Bottom Legend & Star Quick-Picker */}
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs font-mono-tabular text-[#94a3b8]">
               <div className="flex items-center gap-4">
-                <span className="text-cyan-300">● West Plate (−250 m)</span>
-                <span className="text-[#f3e5ab]">● East Plate (+250 m)</span>
+                <span className="text-cyan-300">
+                  ● West Plate W-09: {westPlate?.isAnomaly ? 'LOADED' : 'MISSING'}
+                </span>
+                <span className="text-[#f3e5ab]">
+                  ● East Plate E-09: {eastPlate?.isAnomaly ? 'LOADED' : 'MISSING'}
+                </span>
               </div>
               <div>
                 Selected Target:{' '}
@@ -377,7 +382,6 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
                   role="img"
                   aria-label="Baseline Sightline Intersection Diagram"
                 >
-                  {/* Celestial Sphere Arc at Top */}
                   <path
                     d="M 20 45 Q 200 10 380 45"
                     fill="none"
@@ -396,7 +400,6 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
                     CELESTIAL SPHERE (APPARENT FIRMAMENT)
                   </text>
 
-                  {/* Nadir Mountain Plateau Baseline at Bottom */}
                   <line
                     x1="60"
                     y1="170"
@@ -405,7 +408,6 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
                     stroke="#475569"
                     strokeWidth="2"
                   />
-                  {/* West Pier Node */}
                   <circle cx="110" cy="170" r="5" fill="#67e8f9" />
                   <text
                     x="110"
@@ -418,7 +420,6 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
                     WEST PIER (−250m)
                   </text>
 
-                  {/* East Pier Node */}
                   <circle cx="290" cy="170" r="5" fill="#f3e5ab" />
                   <text
                     x="290"
@@ -431,10 +432,8 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
                     EAST PIER (+250m)
                   </text>
 
-                  {/* Plotted Sightlines */}
                   {sightlinesPlotted && !selectedStar.isAnomaly && (
                     <g>
-                      {/* Parallel rays to infinity */}
                       <line
                         x1="110"
                         y1="170"
@@ -464,9 +463,8 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
                     </g>
                   )}
 
-                  {sightlinesPlotted && selectedStar.isAnomaly && (
+                  {sightlinesPlotted && selectedStar.isAnomaly && bothAnomalyPlatesRecorded && (
                     <g>
-                      {/* Diverging upward rays */}
                       <line
                         x1="110"
                         y1="170"
@@ -483,7 +481,6 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
                         stroke="#f3e5ab"
                         strokeWidth="1.8"
                       />
-                      {/* Sub-dome / local inverted intersection */}
                       <line
                         x1="65"
                         y1="30"
@@ -542,7 +539,9 @@ export const ChartRoomView: React.FC<ChartRoomViewProps> = ({
                   className={`mt-3 p-3 rounded border space-y-1.5 ${
                     calculationResult.isImpossibleGeometry
                       ? 'bg-[#171126] border-[#b388eb]/60 text-[#f3e5ab]'
-                      : 'bg-[#0c1526] border-slate-700 text-[#cbd5e1]'
+                      : !calculationResult.intersectionValid
+                        ? 'bg-[#261912] border-amber-500/60 text-amber-200'
+                        : 'bg-[#0c1526] border-slate-700 text-[#cbd5e1]'
                   }`}
                 >
                   <div className="text-xs font-mono-tabular uppercase tracking-wider font-semibold">

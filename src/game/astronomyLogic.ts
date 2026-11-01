@@ -4,11 +4,51 @@ export type StationId = 'west' | 'east';
 
 export type SceneId =
   | 'TITLE'
+  | 'PROLOGUE'
   | 'EXTERIOR_DECK'
   | 'EAST_STATION'
   | 'TELESCOPE'
   | 'CHART_ROOM'
   | 'ANOMALY_FINALE';
+
+export type TutorialStepId =
+  | 'TUTORIAL_01'
+  | 'TUTORIAL_02'
+  | 'TUTORIAL_03'
+  | 'TUTORIAL_04'
+  | 'TUTORIAL_05'
+  | 'TUTORIAL_06'
+  | 'TUTORIAL_07'
+  | 'TUTORIAL_08'
+  | 'TUTORIAL_09'
+  | 'TUTORIAL_10'
+  | 'COMPLETED';
+
+export type CinematicId =
+  | 'PROLOGUE_1926'
+  | 'ANOMALY_STAGE_2'
+  | 'ANOMALY_STAGE_3'
+  | 'REVELATION_STAGE_4';
+
+export interface TutorialStepInfo {
+  id: Exclude<TutorialStepId, 'COMPLETED'>;
+  numberLabel: string;
+  title: string;
+  instruction: string;
+  controlHint: string;
+}
+
+export interface WorldHotspot {
+  id: string;
+  scene: 'EXTERIOR_DECK' | 'EAST_STATION';
+  /** Normalized horizontal position along the walkable deck [0.12 .. 0.88] */
+  x: number;
+  /** Normalized vertical anchor for prompt badge */
+  y: number;
+  label: string;
+  actionLabel: string;
+  shortTag: string;
+}
 
 export interface CatalogStar {
   id: string;
@@ -46,9 +86,19 @@ export interface RecordedPlate {
   isAnomaly: boolean;
 }
 
+export interface ExposureValidationResult {
+  canExpose: boolean;
+  isCentered: boolean;
+  isSharp: boolean;
+  sharpness: number;
+  aimDistance: number;
+  reason: string | null;
+}
+
 export interface ParallaxCalculationResult {
   starId: string;
   isAnomaly: boolean;
+  canSolveAnomaly: boolean;
   angularDisplacementArcsec: number;
   angularDisplacementFormatted: string;
   parallaxAngleDeg: number;
@@ -77,6 +127,13 @@ export interface GameSaveState {
   scene: SceneId;
   activeStation: StationId;
   cosmicStage: CosmicStage;
+  /** Dr. E. Vance normalized horizontal position on the current deck [0.12 .. 0.88] */
+  playerX: number;
+  playerFacing: 'left' | 'right';
+  hasMovedPlayer: boolean;
+  prologueCompleted: boolean;
+  journalOpenedOnce: boolean;
+  tutorialDismissed: boolean;
   recordedPlates: {
     west: RecordedPlate | null;
     east: RecordedPlate | null;
@@ -90,6 +147,194 @@ export interface GameSaveState {
 }
 
 export const SAVE_STORAGE_KEY = 'no_fixed_stars_save_v1';
+
+export const PROLOGUE_BEATS: {
+  id: string;
+  heading: string;
+  caption: string;
+  plateKey: 'sky' | 'observatory' | 'east_pier' | 'chart_room';
+}[] = [
+  {
+    id: 'beat_1',
+    heading: 'OCTOBER 28, 1926 · NADIR PLATEAU · ELEVATION 4,120 METRES',
+    caption: 'Fourteen days ago, Observatory Director Julian Vane ceased all wireless transmissions from the summit.',
+    plateKey: 'sky',
+  },
+  {
+    id: 'beat_2',
+    heading: 'MINISTRY OF ASTROMETRY — RELIEF DISPATCH',
+    caption: 'You are Dr. E. Vance, meridian astronomer sent to assume custody of the high-altitude facility and complete the unfinished northern sky survey.',
+    plateKey: 'observatory',
+  },
+  {
+    id: 'beat_3',
+    heading: 'THE FIVE-HUNDRED-METRE GRANITE BASELINE',
+    caption: 'Two brass observation piers span the mountain ridge: the West Dome (−250 m) and the East Cliffside Transit Station (+250 m).',
+    plateKey: 'east_pier',
+  },
+  {
+    id: 'beat_4',
+    heading: 'THE SEALED DOME & THE LAST GLASS PLATES',
+    caption: 'The main dome was bolted from within. On the Chart Room comparator table, Vane’s final dry-gelatin plates remain uncatalogued.',
+    plateKey: 'chart_room',
+  },
+  {
+    id: 'beat_5',
+    heading: 'MARGINALIA IN RED INK',
+    caption: 'In the margin of the Sector IV meridian logbook, a single sentence is underlined three times: “Do not triangulate Nadir-IX.”',
+    plateKey: 'observatory',
+  },
+];
+
+export const TUTORIAL_STEPS: Record<Exclude<TutorialStepId, 'COMPLETED'>, TutorialStepInfo> = {
+  TUTORIAL_01: {
+    id: 'TUTORIAL_01',
+    numberLabel: 'TUTORIAL 01 / 10',
+    title: 'Traverse the Observatory Terrace',
+    instruction: 'Move Dr. Vance across the stone observation deck using A / D, Left / Right Arrow keys, or by clicking along the terrace.',
+    controlHint: 'Press [A] / [D] or [←] / [→] to walk',
+  },
+  TUTORIAL_02: {
+    id: 'TUTORIAL_02',
+    numberLabel: 'TUTORIAL 02 / 10',
+    title: 'Approach the West Pier Telescope',
+    instruction: 'Walk to the West Pier Telescope (−250 m) on the left side of the observatory deck and press E (or click the instrument) to look through the eyepiece.',
+    controlHint: 'Stand near West Telescope + Press [E]',
+  },
+  TUTORIAL_03: {
+    id: 'TUTORIAL_03',
+    numberLabel: 'TUTORIAL 03 / 10',
+    title: 'Center Object Nadir-IX in the Eyepiece',
+    instruction: 'Select “The Wanderer (Object Nadir-IX)” in the Sector IV catalog or slew the telescope crosshair until the anomalous star is centered within the inner brass ring.',
+    controlHint: 'Select Nadir-IX or Slew Crosshair',
+  },
+  TUTORIAL_04: {
+    id: 'TUTORIAL_04',
+    numberLabel: 'TUTORIAL 04 / 10',
+    title: 'Rack the Brass Focus Vernier',
+    instruction: 'Unlike fixed stars that focus at 62.0 mm, Nadir-IX lies at a deeper focal plane (74.0 mm). Adjust the Focus Vernier slider until optical sharpness exceeds 85%.',
+    controlHint: 'Adjust Focus Vernier to 74.0 mm (≥85% Sharp)',
+  },
+  TUTORIAL_05: {
+    id: 'TUTORIAL_05',
+    numberLabel: 'TUTORIAL 05 / 10',
+    title: 'Expose the First Photographic Plate',
+    instruction: 'With Object Nadir-IX centered and sharp in the reticle, click “Record Observation (West Plate)” to expose Glass Plate W-09.',
+    controlHint: 'Click Record Observation (West Plate)',
+  },
+  TUTORIAL_06: {
+    id: 'TUTORIAL_06',
+    numberLabel: 'TUTORIAL 06 / 10',
+    title: 'Inspect the Meridian Field Journal',
+    instruction: 'Press J (or click Journal in the upper-right) to review your recorded West Plate coordinates and Director Vane’s marginalia.',
+    controlHint: 'Press [J] to open Field Journal',
+  },
+  TUTORIAL_07: {
+    id: 'TUTORIAL_07',
+    numberLabel: 'TUTORIAL 07 / 10',
+    title: 'Walk to the East Cliffside Pier',
+    instruction: 'Walk Dr. Vance to the far right edge of the Observation Deck (East Ridge Walkway) and press E to traverse the 500-metre ridge to the East Pier (+250 m).',
+    controlHint: 'Walk right to East Ridge Path + Press [E]',
+  },
+  TUTORIAL_08: {
+    id: 'TUTORIAL_08',
+    numberLabel: 'TUTORIAL 08 / 10',
+    title: 'Expose the Second Baseline Plate',
+    instruction: 'Approach the East Pier Transit Instrument (+250 m), press E, center and focus Object Nadir-IX (74.0 mm), and record Glass Plate E-09.',
+    controlHint: 'Expose East Plate E-09 at +250 m Pier',
+  },
+  TUTORIAL_09: {
+    id: 'TUTORIAL_09',
+    numberLabel: 'TUTORIAL 09 / 10',
+    title: 'Enter the Astrometric Chart Room',
+    instruction: 'With both West and East baseline plates recorded, approach the warm amber Chart Room Door and press E to access the Blink Comparator.',
+    controlHint: 'Enter Chart Room + Open Blink Comparator',
+  },
+  TUTORIAL_10: {
+    id: 'TUTORIAL_10',
+    numberLabel: 'TUTORIAL 10 / 10',
+    title: 'Superimpose Plates & Triangulate Parallax',
+    instruction: 'Select Object Nadir-IX on the superimposed star chart and click “Plot Sightlines & Calculate Parallax” to solve the baseline convergence.',
+    controlHint: 'Click Plot Sightlines & Calculate Parallax',
+  },
+};
+
+export const WORLD_HOTSPOTS: WorldHotspot[] = [
+  // Exterior Deck (West Station -250m)
+  {
+    id: 'WEST_TELESCOPE',
+    scene: 'EXTERIOR_DECK',
+    x: 0.24,
+    y: 0.72,
+    label: 'West Pier Equatorial Refractor (−250.0 m)',
+    actionLabel: 'Look Through Eyepiece',
+    shortTag: 'West Pier Telescope',
+  },
+  {
+    id: 'CHART_ROOM_DOOR',
+    scene: 'EXTERIOR_DECK',
+    x: 0.54,
+    y: 0.73,
+    label: 'Astrometric Chart Room & Blink Comparator',
+    actionLabel: 'Enter Chart Room',
+    shortTag: 'Chart Room Door',
+  },
+  {
+    id: 'PLUMB_LINE_PILLAR',
+    scene: 'EXTERIOR_DECK',
+    x: 0.70,
+    y: 0.74,
+    label: 'Meridian Plumb-Line Transit Pillar',
+    actionLabel: 'Inspect Plumb-Bob',
+    shortTag: 'Meridian Plumb-Line',
+  },
+  {
+    id: 'EAST_RIDGE_PATH',
+    scene: 'EXTERIOR_DECK',
+    x: 0.84,
+    y: 0.75,
+    label: 'East Ridge Granite Walkway (+250.0 m →)',
+    actionLabel: 'Traverse to East Pier',
+    shortTag: 'East Cliffside Path →',
+  },
+  // East Cliffside Pier (East Station +250m)
+  {
+    id: 'WEST_RETURN_PATH',
+    scene: 'EAST_STATION',
+    x: 0.17,
+    y: 0.75,
+    label: 'West Ridge Return Path (← −250.0 m)',
+    actionLabel: 'Return to West Deck',
+    shortTag: '← West Deck Path',
+  },
+  {
+    id: 'EAST_TELESCOPE',
+    scene: 'EAST_STATION',
+    x: 0.50,
+    y: 0.71,
+    label: 'East Cliffside Transit Telescope (+250.0 m)',
+    actionLabel: 'Look Through Eyepiece',
+    shortTag: 'East Pier Telescope',
+  },
+  {
+    id: 'BASELINE_THEODOLITE',
+    scene: 'EAST_STATION',
+    x: 0.69,
+    y: 0.73,
+    label: '500m Baseline Optical Theodolite',
+    actionLabel: 'Sight West Dome Beacon',
+    shortTag: 'Baseline Theodolite',
+  },
+  {
+    id: 'EAST_CHART_SHORTCUT',
+    scene: 'EAST_STATION',
+    x: 0.84,
+    y: 0.75,
+    label: 'Observatory Chart Room Annex',
+    actionLabel: 'Enter Chart Room',
+    shortTag: 'Chart Room Annex',
+  },
+];
 
 export const CATALOG_STARS: CatalogStar[] = [
   {
@@ -357,6 +602,64 @@ export function calculateOpticalSharpness(
 }
 
 /**
+ * Strictly validates whether a photographic plate can be exposed right now without auto-snapping.
+ * Requires the target star to be centered within tolerance (<= 0.065) AND focused (>= 0.85).
+ */
+export function validatePlateExposure(
+  aimX: number,
+  aimY: number,
+  focusSetting: number,
+  star: CatalogStar,
+  station: StationId
+): ExposureValidationResult {
+  const pos = getObservedStarPosition(star, station);
+  const aimDistance = Number(Math.hypot(aimX - pos.x, aimY - pos.y).toFixed(4));
+  const sharpness = calculateOpticalSharpness(focusSetting, star.focalPlane);
+  const isCentered = aimDistance <= 0.065;
+  const isSharp = sharpness >= 0.85;
+
+  if (!isCentered && !isSharp) {
+    return {
+      canExpose: false,
+      isCentered,
+      isSharp,
+      sharpness,
+      aimDistance,
+      reason: `Target ${star.commonName} is neither centered in the reticle nor focused. Slew the crosshair onto the star and rack the Focus Vernier to ${star.focalPlane.toFixed(1)} mm.`,
+    };
+  }
+  if (!isCentered) {
+    return {
+      canExpose: false,
+      isCentered,
+      isSharp,
+      sharpness,
+      aimDistance,
+      reason: `Target ${star.commonName} is outside the inner astrometric reticle ring. Click the star in the eyepiece or use the Slew controls to center it before exposing a glass plate.`,
+    };
+  }
+  if (!isSharp) {
+    return {
+      canExpose: false,
+      isCentered,
+      isSharp,
+      sharpness,
+      aimDistance,
+      reason: `Optical image is defocused (${Math.round(sharpness * 100)}% sharpness). Adjust the Focus Vernier slider toward ${star.focalPlane.toFixed(1)} mm until sharpness reaches at least 85%.`,
+    };
+  }
+
+  return {
+    canExpose: true,
+    isCentered: true,
+    isSharp: true,
+    sharpness,
+    aimDistance,
+    reason: null,
+  };
+}
+
+/**
  * Finds the nearest star within a given normalized selection radius in the telescope field.
  */
 export function findNearestStarInField(
@@ -385,7 +688,18 @@ export function findNearestStarInField(
 }
 
 /**
+ * Checks whether both West and East baseline plates of Object Nadir-IX have been recorded.
+ */
+export function hasBothAnomalyPlates(
+  westPlate: RecordedPlate | null,
+  eastPlate: RecordedPlate | null
+): boolean {
+  return westPlate?.isAnomaly === true && eastPlate?.isAnomaly === true;
+}
+
+/**
  * Evaluates the two recorded photographic plates and computes the baseline sightline intersection.
+ * Requires both West and East anomaly plates to be recorded before the anomaly triangulation can be solved.
  */
 export function calculateParallaxIntersection(
   starId: string,
@@ -398,6 +712,7 @@ export function calculateParallaxIntersection(
     return {
       starId: star.id,
       isAnomaly: false,
+      canSolveAnomaly: false,
       angularDisplacementArcsec: 0,
       angularDisplacementFormatted: '0° 00′ 00.00″',
       parallaxAngleDeg: 0,
@@ -410,25 +725,167 @@ export function calculateParallaxIntersection(
     };
   }
 
-  // Nadir-IX anomaly calculation
-  const westAngle = westPlate?.zenithAngleDeg ?? star.westOffset.angleDeg;
-  const eastAngle = eastPlate?.zenithAngleDeg ?? star.eastOffset.angleDeg;
-  const deltaDeg = eastAngle - westAngle; // +4.30 degrees (inverted!)
+  const bothRecorded = hasBothAnomalyPlates(westPlate, eastPlate);
+  if (!bothRecorded) {
+    const missingLabel =
+      !westPlate?.isAnomaly && !eastPlate?.isAnomaly
+        ? 'both Plate W-09 (West Pier −250 m) and Plate E-09 (East Pier +250 m)'
+        : !westPlate?.isAnomaly
+          ? 'Plate W-09 at the West Pier (−250 m)'
+          : 'Plate E-09 at the East Cliffside Pier (+250 m)';
+
+    return {
+      starId: star.id,
+      isAnomaly: true,
+      canSolveAnomaly: false,
+      angularDisplacementArcsec: 0,
+      angularDisplacementFormatted: 'INCOMPLETE BASELINE',
+      parallaxAngleDeg: 0,
+      calculatedDistanceLabel: 'REQUIRES DUAL-PIER PLATES (W-09 & E-09)',
+      intersectionValid: false,
+      isImpossibleGeometry: false,
+      verdictTitle: 'INSUFFICIENT BASELINE DATA — MISSING PHOTOGRAPHIC PLATE',
+      verdictSummary: `Cannot triangulate Object Nadir-IX from a single station. Expose ${missingLabel} so both sightlines across the 500.0-metre granite baseline can be plotted.`,
+      intersectionPoint: { x: 0.5, y: 0.5 },
+    };
+  }
+
+  // Use the actual recorded plate zenith angles
+  const westAngle = westPlate!.zenithAngleDeg;
+  const eastAngle = eastPlate!.zenithAngleDeg;
+  const deltaDeg = Number((eastAngle - westAngle).toFixed(2)); // +4.30 degrees (inverted!)
   const arcsec = Math.round(Math.abs(deltaDeg) * 3600);
 
   return {
     starId: star.id,
     isAnomaly: true,
+    canSolveAnomaly: true,
     angularDisplacementArcsec: arcsec,
-    angularDisplacementFormatted: '4° 18′ 12.0″ [INVERTED]',
-    parallaxAngleDeg: -2.15,
+    angularDisplacementFormatted: `4° 18′ 12.0″ [INVERTED · W ${westAngle}° / E +${eastAngle}°]`,
+    parallaxAngleDeg: Number((-deltaDeg / 2).toFixed(2)),
     calculatedDistanceLabel: '−1.84 km (NEGATIVE PARALLAX · SUB-DOME CONVERGENCE)',
     intersectionValid: true,
     isImpossibleGeometry: true,
     verdictTitle: 'IMPOSSIBLE PARALLAX DETECTED — NEGATIVE CONVERGENCE',
-    verdictSummary:
-      'Across the 500m baseline, Object Nadir-IX shifted +4° 18′ 12″ in the direction of observer motion. Rather than converging in deep space, the West and East sightlines diverge upward and intersect 1.84 km BELOW the celestial sphere—tracking the observer directly.',
+    verdictSummary: `Using recorded plates W-09 (${westPlate!.raObserved}, ${westAngle}°) and E-09 (${eastPlate!.raObserved}, +${eastAngle}°), Object Nadir-IX shifted +${deltaDeg}° in the direction of observer motion. Rather than converging in deep space, the sightlines intersect 1.84 km BELOW the celestial sphere—tracking the observer directly.`,
     intersectionPoint: { x: 0.5, y: 0.68 },
+  };
+}
+
+/**
+ * Computes the nearest interactive hotspot in the current scene if Dr. Vance is within interaction range.
+ */
+export function findNearbyHotspot(
+  scene: SceneId,
+  playerX: number,
+  maxDistance = 0.075
+): WorldHotspot | null {
+  if (scene !== 'EXTERIOR_DECK' && scene !== 'EAST_STATION') return null;
+  let closest: { hotspot: WorldHotspot; dist: number } | null = null;
+  for (const h of WORLD_HOTSPOTS) {
+    if (h.scene !== scene) continue;
+    const dist = Math.abs(playerX - h.x);
+    if (dist <= maxDistance && (!closest || dist < closest.dist)) {
+      closest = { hotspot: h, dist };
+    }
+  }
+  return closest ? closest.hotspot : null;
+}
+
+/**
+ * Derives the active contextual tutorial step (TUTORIAL_01 .. TUTORIAL_10 or COMPLETED).
+ */
+export function deriveActiveTutorialStep(
+  state: GameSaveState,
+  uiContext: {
+    isTelescopeOpen: boolean;
+    selectedStarId?: string;
+    isCentered?: boolean;
+    isSharp?: boolean;
+  }
+): TutorialStepId {
+  if (state.chartPuzzleSolved) {
+    return 'COMPLETED';
+  }
+
+  const hasWestAnomaly = state.recordedPlates.west?.isAnomaly === true;
+  const hasEastAnomaly = state.recordedPlates.east?.isAnomaly === true;
+
+  // Step 1-5: West Pier observation flow
+  if (!hasWestAnomaly) {
+    if (!uiContext.isTelescopeOpen) {
+      if (!state.hasMovedPlayer) {
+        return 'TUTORIAL_01';
+      }
+      return 'TUTORIAL_02';
+    }
+    // Inside West Telescope
+    if (uiContext.selectedStarId !== 'NADIR_IX' || !uiContext.isCentered) {
+      return 'TUTORIAL_03';
+    }
+    if (!uiContext.isSharp) {
+      return 'TUTORIAL_04';
+    }
+    return 'TUTORIAL_05';
+  }
+
+  // Step 6: Open Journal once after recording West Plate
+  if (!state.journalOpenedOnce) {
+    return 'TUTORIAL_06';
+  }
+
+  // Step 7-8: Traverse to East Pier & expose East Plate
+  if (!hasEastAnomaly) {
+    if (state.scene !== 'EAST_STATION' && !uiContext.isTelescopeOpen) {
+      return 'TUTORIAL_07';
+    }
+    return 'TUTORIAL_08';
+  }
+
+  // Step 9-10: Enter Chart Room & Triangulate
+  if (state.scene !== 'CHART_ROOM') {
+    return 'TUTORIAL_09';
+  }
+
+  return 'TUTORIAL_10';
+}
+
+/**
+ * Returns the persistent "CURRENT INVESTIGATION" summary shown in the top-left HUD and Journal.
+ */
+export function getCurrentInvestigationObjective(state: GameSaveState): {
+  phaseLabel: string;
+  headline: string;
+  detail: string;
+} {
+  const hasWest = state.recordedPlates.west?.isAnomaly === true;
+  const hasEast = state.recordedPlates.east?.isAnomaly === true;
+
+  if (!hasWest) {
+    return {
+      phaseLabel: 'OBJECTIVE 01 / 04',
+      headline: 'Expose West Pier Plate of Object Nadir-IX (−250 m)',
+      detail: 'Walk Dr. Vance to the West Pier Equatorial Telescope, focus on The Wanderer (74.0 mm), and expose Glass Plate W-09.',
+    };
+  }
+  if (!hasEast) {
+    return {
+      phaseLabel: 'OBJECTIVE 02 / 04',
+      headline: 'Traverse to East Cliffside Pier & Expose Plate E-09 (+250 m)',
+      detail: 'Walk east along the granite ridge path to the East Pier (+250 m) and record the second baseline observation of Object Nadir-IX.',
+    };
+  }
+  if (!state.chartPuzzleSolved) {
+    return {
+      phaseLabel: 'OBJECTIVE 03 / 04',
+      headline: 'Superimpose Both Plates in the Chart Room',
+      detail: 'Enter the Astrometric Chart Room, overlay Plates W-09 and E-09 on the Blink Comparator, and calculate the baseline parallax.',
+    };
+  }
+  return {
+    phaseLabel: 'OBJECTIVE 04 / 04',
+    headline: 'Step Outside & Witness the Stage IV Sky Transformation',
+    detail: 'Pan the firmament above Nadir Plateau and observe how Object Nadir-IX remains locked to your gaze.',
   };
 }
 
@@ -465,6 +922,12 @@ export function createInitialGameState(autostart = false): GameSaveState {
     scene: autostart ? 'EXTERIOR_DECK' : 'TITLE',
     activeStation: 'west',
     cosmicStage: 1,
+    playerX: 0.38,
+    playerFacing: 'left',
+    hasMovedPlayer: false,
+    prologueCompleted: autostart,
+    journalOpenedOnce: false,
+    tutorialDismissed: false,
     recordedPlates: {
       west: null,
       east: null,
@@ -504,8 +967,23 @@ export function deserializeGameState(
     return {
       ...fallback,
       ...parsed,
-      scene: autostart && parsed.scene === 'TITLE' ? 'EXTERIOR_DECK' : (parsed.scene ?? fallback.scene),
+      scene:
+        autostart && (parsed.scene === 'TITLE' || parsed.scene === 'PROLOGUE')
+          ? 'EXTERIOR_DECK'
+          : (parsed.scene ?? fallback.scene),
       cosmicStage,
+      playerX:
+        typeof parsed.playerX === 'number'
+          ? Math.max(0.12, Math.min(0.88, parsed.playerX))
+          : fallback.playerX,
+      playerFacing:
+        parsed.playerFacing === 'left' || parsed.playerFacing === 'right'
+          ? parsed.playerFacing
+          : fallback.playerFacing,
+      hasMovedPlayer: Boolean(parsed.hasMovedPlayer),
+      prologueCompleted: autostart ? true : Boolean(parsed.prologueCompleted),
+      journalOpenedOnce: Boolean(parsed.journalOpenedOnce),
+      tutorialDismissed: Boolean(parsed.tutorialDismissed),
       recordedPlates: {
         west: parsed.recordedPlates?.west ?? null,
         east: parsed.recordedPlates?.east ?? null,
